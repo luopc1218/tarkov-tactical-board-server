@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/tarkov_board?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: root
+    password: Peichun@92755
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+minio:
+  endpoint: http://localhost:9000
+  accessKey: minioadmin
+  secretKey: minioadmin
+  bucket: tarkov-files
+
+app:
+  auth:
+    adminUsername: admin
+    adminPasswordHash: $2y$10$OTn77oohWpGwKB8hMYFLW.WJ1MxaFRr6.AF7O16CUxFmjDxgWre2O
+  jwt:
+    # Base64 encoded, 256-bit key for HS256
+    secret: QWJjREVmZ0hpSmtMbW5PcFFyU3RVdld4WXowMTIzNDU2Nzg5Kys=
+    expireSeconds: 7200
