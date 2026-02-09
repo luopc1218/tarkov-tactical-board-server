@@ -1,5 +1,6 @@
 package com.tarkov.board.websocket;
 
+import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
@@ -9,6 +10,7 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Component
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private static final Set<WebSocketSession> SESSIONS = ConcurrentHashMap.newKeySet();
