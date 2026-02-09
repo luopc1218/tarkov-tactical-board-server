@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface WhiteboardInstanceRepository extends JpaRepository<WhiteboardInstanceEntity, String> {
@@ -13,6 +14,12 @@ public interface WhiteboardInstanceRepository extends JpaRepository<WhiteboardIn
     Optional<WhiteboardInstanceEntity> findByInstanceIdAndExpireAtAfter(String instanceId, Instant now);
 
     boolean existsByInstanceIdAndExpireAtAfter(String instanceId, Instant now);
+
+    List<WhiteboardInstanceEntity> findAllByOrderByCreatedAtDesc();
+
+    List<WhiteboardInstanceEntity> findByExpireAtAfterOrderByCreatedAtDesc(Instant now);
+
+    boolean existsByInstanceId(String instanceId);
 
     @Modifying
     @Query("DELETE FROM WhiteboardInstanceEntity i WHERE i.expireAt < :now")

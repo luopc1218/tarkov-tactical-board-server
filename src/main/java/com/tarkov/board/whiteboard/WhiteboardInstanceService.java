@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -116,9 +117,28 @@ public class WhiteboardInstanceService {
         repository.save(entity);
     }
 
+    @Transactional(readOnly = true)
+    public List<WhiteboardAdminInstanceResponse> listInstances(boolean includeExpired) {
+        Instant now = Instant.now();
+        List<WhiteboardInstanceEntity> instances = includeExpired
+                ? repository.findAllByOrderByCreatedAtDesc()
+                : repository.findByExpireAtAfterOrderByCreatedAtDesc(now);
+        return instances.stream()
+                .map(entity -> toAdminResponse(entity, now))
+                .toList();
+    }
+
     @Transactional
-    public void cleanupExpiredInstances() {
-        repository.deleteExpired(Instant.now());
+    public void deleteInstance(String instanceId) {
+        if (!repository.existsByInstanceId(instanceId)) {
+            throw new ResponseStatusException(NOT_FOUND, "Whiteboard instance not found");
+        }
+        repository.deleteById(instanceId);
+    }
+
+    @Transactional
+    public int cleanupExpiredInstances() {
+        return repository.deleteExpired(Instant.now());
     }
 
     private void saveStateInternal(WhiteboardInstanceEntity entity, JsonNode state) {
@@ -159,6 +179,18 @@ public class WhiteboardInstanceService {
                 WS_PATH_PREFIX + entity.getInstanceId(),
                 entity.getCreatedAt(),
                 entity.getExpireAt()
+        );
+    }
+
+    private WhiteboardAdminInstanceResponse toAdminResponse(WhiteboardInstanceEntity entity, Instant now) {
+        return new WhiteboardAdminInstanceResponse(
+                entity.getInstanceId(),
+                entity.getMapId(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt(),
+                entity.getExpireAt(),
+                entity.getExpireAt().isAfter(now),
+                entity.getStateJson() != null && !entity.getStateJson().isBlank()
         );
     }
 
