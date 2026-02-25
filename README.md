@@ -241,60 +241,59 @@ curl -X PUT http://localhost:8080/api/whiteboard/instances/{instanceId}/state \
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 
-## 生产部署（Ubuntu + Docker，尽量不影响同机其他应用）
+## 生产部署（Docker Compose）
 
-### 1. 目录与版本
+建议后端仅监听 `127.0.0.1:18080`，由 Nginx 反向代理 `/api/` 和 `/ws/`。
+
+### 1. 首次部署
 
 ```bash
 mkdir -p /opt/tarkov-board
 cd /opt/tarkov-board
 git clone <your-repo-url> backend
 cd backend
-git checkout release/1.0
-git pull
-git checkout v1.0.1
+git checkout v1.1.0
+docker compose up -d --build
 ```
 
-### 2. 用 Docker 启动 MySQL + MinIO + 后端
-
-建议：仅将后端映射到 `127.0.0.1:18080`，由 Nginx 对外转发；MySQL/MinIO 不直接暴露公网端口。
-
-可参考最小启动思路：
-
-- MySQL：容器内 `3306`
-- MinIO：容器内 `9000`
-- 后端：容器内 `8080`，宿主机映射 `127.0.0.1:18080`
-
-### 3. Nginx 反向代理
-
-- 前端静态资源由 Nginx 提供
-- `/api/`、`/ws/` 反代到 `http://127.0.0.1:18080`
-
-这样前后端同域访问，CORS 风险最低。
-
-### 4. HTTPS 与防火墙
-
-- 使用 `certbot` 配置 HTTPS
-- 云防火墙/UFW 仅开放 `22/80/443`
-- 不开放 `3306/9000/9001` 到公网
-
-## 发布流程
-
-### 常规发布
+### 2. 手动更新并重启（按 Tag 发布）
 
 ```bash
-git checkout release/1.0
+cd /opt/tarkov-board/backend
+git fetch --tags origin
+git checkout v1.1.0
+docker compose down
+docker compose up -d --build
+```
+
+如果只重启后端服务（服务名示例 `backend`）：
+
+```bash
+docker compose up -d --build backend
+```
+
+如果使用的是自定义 compose 文件（如 `docker-compose.prod.yml`），请加 `-f`：
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+### 3. 验证
+
+```bash
+docker compose ps
+docker compose logs -f --tail=200
+curl -i http://127.0.0.1:18080/api/health
+```
+
+## 发布流程（精简）
+
+```bash
+git checkout master
 mvn -DskipTests compile
 git add .
 git commit -m "chore: release update"
 git tag -a v1.0.x -m "Release v1.0.x"
-git push origin release/1.0
+git push origin master
 git push origin v1.0.x
-```
-
-### 覆盖已存在 Tag（谨慎）
-
-```bash
-git tag -fa v1.0.1 -m "Release v1.0.1"
-git push origin v1.0.1 --force
 ```
