@@ -110,6 +110,13 @@ curl http://localhost:8080/api/maps
 
 ### 登录获取 JWT
 
+默认管理账号（开发环境）：
+
+- username: `admin`
+- password: `Admin@123456`
+
+说明：后端配置文件中仅保存密码哈希（`app.auth.adminPasswordHash`），不保存明文密码。
+
 ```bash
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
@@ -126,6 +133,19 @@ curl -X POST http://localhost:8080/api/auth/login \
 - `POST /api/admin/maps`
 - `PUT /api/admin/maps/{id}`
 - `DELETE /api/admin/maps/{id}`
+
+### 管理员修改密码接口（JWT）
+
+`PUT /api/admin/auth/password`
+
+请求体示例：
+
+```json
+{
+  "oldPassword": "Admin@123456",
+  "newPassword": "NewAdmin@123456"
+}
+```
 
 ## 白板协作接口
 
@@ -279,4 +299,3 @@ git push origin v1.0.x
 git tag -fa v1.0.1 -m "Release v1.0.1"
 git push origin v1.0.1 --force
 ```
-
