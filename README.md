@@ -34,39 +34,38 @@ Escape from Tarkov 战术白板后端（Spring Boot 3 + Java 17）。
 
 - JDK 17+
 - Maven 3.9+
-- MySQL 8+
-- Docker（用于启动 MinIO）
+- Docker（用于一键启动 MySQL + MinIO）
 
-### 2. 初始化 MySQL
+### 2. 一键启动 Docker 容器（MySQL + MinIO）
 
-创建数据库：
+```bash
+./scripts/start-docker.sh
+```
 
-```sql
-CREATE DATABASE IF NOT EXISTS tarkov_board DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+该脚本会完成：
+
+- 启动 MySQL 8（`localhost:3306`）
+- 启动 MinIO（`localhost:9000/9001`）
+- 自动创建数据库 `tarkov_board`
+
+如需自定义账号密码，可在执行前设置环境变量：
+
+```bash
+MYSQL_ROOT_PASSWORD=your_mysql_password \
+MINIO_ROOT_USER=your_minio_user \
+MINIO_ROOT_PASSWORD=your_minio_password \
+./scripts/start-docker.sh
 ```
 
 项目启动时会自动初始化/补齐业务表结构（如地图表、白板实例表）。
 
-默认连接配置在：`src/main/resources/application.yml`
-
-### 3. 初始化 MinIO（Docker）
-
 ```bash
-docker run -d \
-  --name minio \
-  -p 9000:9000 \
-  -p 9001:9001 \
-  -e "MINIO_ROOT_USER=minioadmin" \
-  -e "MINIO_ROOT_PASSWORD=minioadmin" \
-  -v minio_data:/data \
-  quay.io/minio/minio server /data --console-address ":9001"
+docker compose -f docker/docker-compose.dev.yml down
 ```
 
-- API: `http://localhost:9000`
-- Console: `http://localhost:9001`
-- 默认账号：`minioadmin / minioadmin`
+- 默认连接配置在：`src/main/resources/application.yml`
 
-### 4. 配置后端参数
+### 3. 配置后端参数
 
 编辑：`src/main/resources/application.yml`
 
@@ -84,7 +83,7 @@ docker run -d \
 htpasswd -bnBC 10 "" "你的密码" | tr -d ':\n'
 ```
 
-### 5. 启动项目
+### 4. 启动项目
 
 ```bash
 mvn spring-boot:run
@@ -92,7 +91,7 @@ mvn spring-boot:run
 
 默认地址：`http://localhost:8080`
 
-### 6. 快速验证
+### 5. 快速验证
 
 健康检查：
 
