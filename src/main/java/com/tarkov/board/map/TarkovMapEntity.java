@@ -24,21 +24,21 @@ public class TarkovMapEntity {
     @Column(name = "name_en", nullable = false, length = 128)
     private String nameEn;
 
-    @Column(name = "banner_object_name", length = 255)
-    private String bannerObjectName;
+    @Column(name = "banner_path", length = 255)
+    private String bannerPath;
 
-    @Column(name = "map_object_name", length = 255)
-    private String mapObjectName;
+    @Column(name = "map_path", length = 255)
+    private String mapPath;
 
     protected TarkovMapEntity() {
     }
 
-    public TarkovMapEntity(String code, String nameZh, String nameEn, String bannerObjectName, String mapObjectName) {
+    public TarkovMapEntity(String code, String nameZh, String nameEn, String bannerPath, String mapPath) {
         this.code = code;
         this.nameZh = nameZh;
         this.nameEn = nameEn;
-        this.bannerObjectName = bannerObjectName;
-        this.mapObjectName = mapObjectName;
+        this.bannerPath = bannerPath;
+        this.mapPath = mapPath;
     }
 
     public Long getId() {
@@ -69,19 +69,19 @@ public class TarkovMapEntity {
         this.nameEn = nameEn;
     }
 
-    public String getBannerObjectName() {
-        return bannerObjectName;
+    public String getBannerPath() {
+        return bannerPath;
     }
 
-    public void setBannerObjectName(String bannerObjectName) {
-        this.bannerObjectName = bannerObjectName;
+    public void setBannerPath(String bannerPath) {
+        this.bannerPath = bannerPath;
     }
 
-    public String getMapObjectName() {
-        return mapObjectName;
+    public String getMapPath() {
+        return mapPath;
     }
 
-    public void setMapObjectName(String mapObjectName) {
-        this.mapObjectName = mapObjectName;
+    public void setMapPath(String mapPath) {
+        this.mapPath = mapPath;
     }
 }

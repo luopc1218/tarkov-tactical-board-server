@@ -14,7 +14,7 @@
     <artifactId>tarkov-tactical-board-server</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>tarkov-tactical-board-server</name>
-    <description>Spring Boot backend scaffold with WebSocket and MinIO</description>
+    <description>Spring Boot backend scaffold with WebSocket</description>
 
     <properties>
         <java.version>17</java.version>
@@ -54,12 +54,6 @@
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>io.minio</groupId>
-            <artifactId>minio</artifactId>
-            <version>8.5.12</version>
         </dependency>
 
         <dependency>

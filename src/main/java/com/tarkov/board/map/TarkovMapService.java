@@ -13,11 +13,9 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class TarkovMapService {
 
     private final TarkovMapRepository repository;
-    private final MapAssetResolver assetResolver;
 
-    public TarkovMapService(TarkovMapRepository repository, MapAssetResolver assetResolver) {
+    public TarkovMapService(TarkovMapRepository repository) {
         this.repository = repository;
-        this.assetResolver = assetResolver;
     }
 
     public List<TarkovMapResponse> listMaps() {
@@ -34,7 +32,7 @@ public class TarkovMapService {
         });
 
         TarkovMapEntity entity = new TarkovMapEntity(
-                request.code(), request.nameZh(), request.nameEn(), request.bannerObjectName(), request.mapObjectName());
+                request.code(), request.nameZh(), request.nameEn(), request.bannerPath(), request.mapPath());
         return toResponse(repository.save(entity));
     }
 
@@ -50,8 +48,8 @@ public class TarkovMapService {
         entity.setCode(request.code());
         entity.setNameZh(request.nameZh());
         entity.setNameEn(request.nameEn());
-        entity.setBannerObjectName(request.bannerObjectName());
-        entity.setMapObjectName(request.mapObjectName());
+        entity.setBannerPath(request.bannerPath());
+        entity.setMapPath(request.mapPath());
 
         return toResponse(repository.save(entity));
     }
@@ -65,17 +63,13 @@ public class TarkovMapService {
     }
 
     private TarkovMapResponse toResponse(TarkovMapEntity entity) {
-        MapAssetResolver.AssetResolved banner = assetResolver.resolveBanner(entity);
-        MapAssetResolver.AssetResolved mapBody = assetResolver.resolveMapBody(entity);
         return new TarkovMapResponse(
                 entity.getId(),
                 entity.getCode(),
                 entity.getNameZh(),
                 entity.getNameEn(),
-                banner.objectName(),
-                banner.url(),
-                mapBody.objectName(),
-                mapBody.url()
+                entity.getBannerPath(),
+                entity.getMapPath()
         );
     }
 }

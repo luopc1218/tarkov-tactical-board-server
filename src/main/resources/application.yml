@@ -19,12 +19,6 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
 
-minio:
-  endpoint: http://localhost:9000
-  accessKey: minioadmin
-  secretKey: minioadmin
-  bucket: tarkov-files
-
 app:
   auth:
     adminUsername: admin
