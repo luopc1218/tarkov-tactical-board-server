@@ -53,7 +53,11 @@ public class SecurityConfig {
                 "http://127.0.0.1:*",
                 "http://192.168.*:*",
                 "http://10.*:*",
-                "http://172.*:*"
+                "http://172.*:*",
+                "http://81.71.150.227",
+                "https://81.71.150.227",
+                "https://tarkovtacticalboard.site",
+                "https://www.tarkovtacticalboard.site"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
