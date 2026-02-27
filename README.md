@@ -1,299 +1,133 @@
 # Tarkov Tactical Board Server
 
-Escape from Tarkov 战术白板后端（Spring Boot 3 + Java 17）。
+Backend service for the Tarkov Tactical Board project.
 
-## 功能概览
+Frontend repository: [https://github.com/luopc1218/tarkov-tactical-board](https://github.com/luopc1218/tarkov-tactical-board)
 
-- 地图服务
-  - 公开地图查询：`/api/maps`
-  - 管理端地图增删改查：`/api/admin/maps/**`（JWT）
-- 白板协作服务
-  - 创建白板实例（绑定 `mapId`）
-  - 多人通过同一个 `instanceId` 进行 WebSocket 实时协作
-  - 白板状态快照持久化（MySQL）
-  - 状态保留至少 72 小时
-  - 管理端实例列表、删除实例
-- 文件服务（MinIO）
-  - 文件上传：`/api/files/upload`
-  - 文件下载：`/api/files/download`
-- 认证服务
-  - 管理端登录：`/api/auth/login`
+Language: [中文](#中文) | [English](#english)
 
-## 技术栈
+## 中文
 
-- Spring Boot 3.4
-- Spring Security + JWT
-- Spring WebSocket
-- Spring Data JPA
-- MySQL 8
-- MinIO
+### 技术栈
 
-## 本地启动（开发环境）
-
-### 1. 环境要求
-
-- JDK 17+
+- Java 17+（`pom.xml` 指定 `java.version=17`）
 - Maven 3.9+
-- Docker（用于一键启动 MySQL + MinIO）
-
-### 2. 一键启动 Docker 容器（MySQL + MinIO）
-
-```bash
-./scripts/start-docker.sh
-```
-
-该脚本会完成：
-
-- 启动 MySQL 8（`localhost:3306`）
-- 启动 MinIO（`localhost:9000/9001`）
-- 自动创建数据库 `tarkov_board`
-
-如需自定义账号密码，可在执行前设置环境变量：
-
-```bash
-MYSQL_ROOT_PASSWORD=your_mysql_password \
-MINIO_ROOT_USER=your_minio_user \
-MINIO_ROOT_PASSWORD=your_minio_password \
-./scripts/start-docker.sh
-```
-
-项目启动时会自动初始化/补齐业务表结构（如地图表、白板实例表）。
-
-```bash
-docker compose -f docker/docker-compose.dev.yml down
-```
-
-- 默认连接配置在：`src/main/resources/application.yml`
-
-### 3. 配置后端参数
-
-编辑：`src/main/resources/application.yml`
-
-重点检查：
-
-- `spring.datasource.*`
-- `minio.*`
-- `app.auth.adminUsername`
-- `app.auth.adminPasswordHash`
-- `app.jwt.secret`
-
-生成 bcrypt 密码哈希：
-
-```bash
-htpasswd -bnBC 10 "" "你的密码" | tr -d ':\n'
-```
-
-### 4. 启动项目
-
-```bash
-mvn spring-boot:run
-```
-
-默认地址：`http://localhost:8080`
-
-### 5. 快速验证
-
-健康检查：
-
-```bash
-curl http://localhost:8080/api/health
-```
-
-地图列表：
-
-```bash
-curl http://localhost:8080/api/maps
-```
-
-## 认证与管理端
-
-### 登录获取 JWT
-
-默认管理账号（开发环境）：
-
-- username: `admin`
-- password: `Admin@123456`
-
-说明：后端配置文件中仅保存密码哈希（`app.auth.adminPasswordHash`），不保存明文密码。
-
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"你的密码"}'
-```
-
-返回 `accessToken` 后，请在管理端接口中带上：
-
-- `Authorization: Bearer <accessToken>`
-
-### 管理端地图接口
-
-- `GET /api/admin/maps`
-- `POST /api/admin/maps`
-- `PUT /api/admin/maps/{id}`
-- `DELETE /api/admin/maps/{id}`
-
-### 管理员修改密码接口（JWT）
-
-`PUT /api/admin/auth/password`
-
-请求体示例：
-
-```json
-{
-  "oldPassword": "Admin@123456",
-  "newPassword": "NewAdmin@123456"
-}
-```
-
-## 白板协作接口
-
-### 1) 创建实例（必须传 `mapId`）
-
-```bash
-curl -X POST http://localhost:8080/api/whiteboard/instances \
-  -H "Content-Type: application/json" \
-  -d '{"mapId":1}'
-```
-
-返回包含：
-
-- `instanceId`
-- `mapId`
-- `wsPath`（如 `/ws/whiteboard/{instanceId}`）
-- `createdAt`
-- `expireAt`
-
-### 2) 查询实例（进入页面时取 `mapId`）
-
-```bash
-curl http://localhost:8080/api/whiteboard/instances/{instanceId}
-```
-
-### 3) 状态读取与保存
-
-读取：
-
-```bash
-curl http://localhost:8080/api/whiteboard/instances/{instanceId}/state
-```
-
-保存：
-
-```bash
-curl -X PUT http://localhost:8080/api/whiteboard/instances/{instanceId}/state \
-  -H "Content-Type: application/json" \
-  -d '{"state":{"shapes":[]}}'
-```
-
-### 4) WebSocket 协作
-
-- 聊天广播（历史调试用）：`ws://localhost:8080/ws/chat`
-- 白板协作：`ws://localhost:8080/ws/whiteboard/{instanceId}`
-
-白板消息转发规则：
-
-- 同 `instanceId` 的连接之间实时广播
-- 服务端不会修改前端 JSON payload
-
-状态持久化约定：
-
-- 当消息 `type` 为以下值时，服务端会尝试落库快照：
-  - `snapshot`
-  - `state_snapshot`
-  - `full_state`
-- 快照字段读取优先级：`state` > `data`
-
-### 5) 保留与清理策略
-
-- 每次实例创建或快照保存，过期时间刷新为“当前时间 + 72 小时”
-- 后端内置定时任务，每小时自动清理过期实例
-
-## 管理端白板实例接口（JWT）
-
-- `GET /api/admin/whiteboard/instances?includeExpired=true|false`
-- `DELETE /api/admin/whiteboard/instances/{instanceId}`
-
-列表返回字段包括：
-
-- `instanceId`
-- `mapId`
-- `createdAt`
-- `updatedAt`
-- `expireAt`
-- `active`
-- `hasState`
-
-## CORS 说明
-
-当前后端允许以下来源模式：
-
-- `http://localhost:*`
-- `http://127.0.0.1:*`
-- `http://192.168.*:*`
-- `http://10.*:*`
-- `http://172.*:*`
-
-如果前端采用同域名反向代理（推荐），可避免大多数跨域问题。
-
-## API 文档
-
-- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
-- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-
-## 生产部署（Docker Compose）
-
-建议后端仅监听 `127.0.0.1:18080`，由 Nginx 反向代理 `/api/` 和 `/ws/`。
-
-### 1. 首次部署
-
-```bash
-mkdir -p /opt/tarkov-board
-cd /opt/tarkov-board
-git clone <your-repo-url> backend
-cd backend
-git checkout v1.1.0
-docker compose up -d --build
-```
-
-### 2. 手动更新并重启（按 Tag 发布）
-
-```bash
-cd /opt/tarkov-board/backend
-git fetch --tags origin
-git checkout v1.1.0
-docker compose down
-docker compose up -d --build
-```
-
-如果只重启后端服务（服务名示例 `backend`）：
-
-```bash
-docker compose up -d --build backend
-```
-
-如果使用的是自定义 compose 文件（如 `docker-compose.prod.yml`），请加 `-f`：
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-### 3. 验证
-
-```bash
-docker compose ps
-docker compose logs -f --tail=200
-curl -i http://127.0.0.1:18080/api/health
-```
-
-## 发布流程（精简）
-
-```bash
-git checkout master
-mvn -DskipTests compile
-git add .
-git commit -m "chore: release update"
-git tag -a v1.0.x -m "Release v1.0.x"
-git push origin master
-git push origin v1.0.x
-```
+- Spring Boot 3.4.2
+- Spring Web / Validation / WebSocket
+- Spring Data JPA + Hibernate
+- Spring Security + JWT
+- MySQL 8+
+- Springdoc OpenAPI（Swagger UI）
+
+### 启动
+
+1. 环境准备
+   - 安装 JDK 17+、Maven 3.9+
+   - 准备 MySQL（可选使用项目脚本启动 Docker 依赖）
+2. 启动依赖服务（开发环境）
+   ```bash
+   ./scripts/start-docker.sh
+   ```
+   停止依赖服务：
+   ```bash
+   docker compose -f docker/docker-compose.dev.yml down
+   ```
+3. 检查配置
+   - 文件：`src/main/resources/application.yml`
+   - 重点项：`spring.datasource.*`、`app.auth.*`、`app.jwt.*`
+4. 启动后端
+   ```bash
+   mvn spring-boot:run
+   ```
+5. 验证
+   ```bash
+   curl http://localhost:8080/api/health
+   ```
+
+### 打包与部署
+
+1. 打包
+   ```bash
+   mvn clean package -DskipTests
+   ```
+2. 运行 Jar
+   ```bash
+   java -jar target/tarkov-tactical-board-server-0.0.1-SNAPSHOT.jar
+   ```
+3. 推荐使用环境变量覆盖敏感配置
+   ```bash
+   export SPRING_DATASOURCE_URL="jdbc:mysql://127.0.0.1:3306/tarkov_board?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
+   export SPRING_DATASOURCE_USERNAME="root"
+   export SPRING_DATASOURCE_PASSWORD="your_password"
+   export APP_AUTH_ADMINUSERNAME="admin"
+   export APP_AUTH_ADMINPASSWORDHASH="your_bcrypt_hash"
+   export APP_JWT_SECRET="your_base64_secret"
+   java -jar target/tarkov-tactical-board-server-0.0.1-SNAPSHOT.jar
+   ```
+4. 部署后验证
+   ```bash
+   curl http://127.0.0.1:8080/api/health
+   ```
+
+## English
+
+### Tech Stack
+
+- Java 17+ (`java.version=17` in `pom.xml`)
+- Maven 3.9+
+- Spring Boot 3.4.2
+- Spring Web / Validation / WebSocket
+- Spring Data JPA + Hibernate
+- Spring Security + JWT
+- MySQL 8+
+- Springdoc OpenAPI (Swagger UI)
+
+### Run Locally
+
+1. Prerequisites
+   - Install JDK 17+ and Maven 3.9+
+   - Prepare MySQL (or use the project script to start Docker dependencies)
+2. Start dependencies (dev)
+   ```bash
+   ./scripts/start-docker.sh
+   ```
+   Stop dependencies:
+   ```bash
+   docker compose -f docker/docker-compose.dev.yml down
+   ```
+3. Check configuration
+   - File: `src/main/resources/application.yml`
+   - Key fields: `spring.datasource.*`, `app.auth.*`, `app.jwt.*`
+4. Start backend
+   ```bash
+   mvn spring-boot:run
+   ```
+5. Verify
+   ```bash
+   curl http://localhost:8080/api/health
+   ```
+
+### Build and Deploy
+
+1. Build package
+   ```bash
+   mvn clean package -DskipTests
+   ```
+2. Run Jar
+   ```bash
+   java -jar target/tarkov-tactical-board-server-0.0.1-SNAPSHOT.jar
+   ```
+3. Recommended: override sensitive config with env vars
+   ```bash
+   export SPRING_DATASOURCE_URL="jdbc:mysql://127.0.0.1:3306/tarkov_board?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
+   export SPRING_DATASOURCE_USERNAME="root"
+   export SPRING_DATASOURCE_PASSWORD="your_password"
+   export APP_AUTH_ADMINUSERNAME="admin"
+   export APP_AUTH_ADMINPASSWORDHASH="your_bcrypt_hash"
+   export APP_JWT_SECRET="your_base64_secret"
+   java -jar target/tarkov-tactical-board-server-0.0.1-SNAPSHOT.jar
+   ```
+4. Post-deploy check
+   ```bash
+   curl http://127.0.0.1:8080/api/health
+   ```
