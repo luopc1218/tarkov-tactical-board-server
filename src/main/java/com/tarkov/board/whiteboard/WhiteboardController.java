@@ -41,7 +41,7 @@ public class WhiteboardController {
     }
 
     @PutMapping("/instances/{instanceId}/state")
-    @Operation(summary = "保存白板状态", description = "写入完整画布状态快照，并延长保留期到至少72小时")
+    @Operation(summary = "保存白板状态", description = "写入完整画布状态快照，并延长保留期到至少24小时")
     public WhiteboardStateResponse saveState(@PathVariable String instanceId,
                                              @Valid @RequestBody WhiteboardStateUpsertRequest request) {
         return instanceService.saveState(instanceId, request.state());

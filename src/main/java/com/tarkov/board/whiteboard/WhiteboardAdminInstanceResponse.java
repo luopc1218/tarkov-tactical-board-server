@@ -4,7 +4,8 @@ import java.time.Instant;
 
 public record WhiteboardAdminInstanceResponse(
         String instanceId,
-        Long mapId,
+        String mapNameZh,
+        String mapNameEn,
         Instant createdAt,
         Instant updatedAt,
         Instant expireAt,

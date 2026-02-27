@@ -3,17 +3,23 @@ package com.tarkov.board.whiteboard;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tarkov.board.map.TarkovMapEntity;
 import com.tarkov.board.map.TarkovMapRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -22,7 +28,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class WhiteboardInstanceService {
 
     private static final String WS_PATH_PREFIX = "/ws/whiteboard/";
-    private static final Duration RETENTION_DURATION = Duration.ofHours(72);
+    private static final Duration RETENTION_DURATION = Duration.ofHours(24);
     private static final Set<String> SNAPSHOT_TYPES = Set.of("snapshot", "state_snapshot", "full_state");
 
     private final WhiteboardInstanceRepository repository;
@@ -50,17 +56,18 @@ public class WhiteboardInstanceService {
         return toResponse(entity);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public WhiteboardInstanceResponse getInstance(String instanceId) {
         return toResponse(getActiveEntityOrThrow(instanceId));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public boolean isInstanceActive(String instanceId) {
-        return repository.existsByInstanceIdAndExpireAtAfter(instanceId, Instant.now());
+        Instant now = Instant.now();
+        return repository.touchExpireAtIfActive(instanceId, now, now.plus(RETENTION_DURATION)) > 0;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public WhiteboardStateResponse getState(String instanceId) {
         WhiteboardInstanceEntity entity = getActiveEntityOrThrow(instanceId);
         return new WhiteboardStateResponse(
@@ -118,13 +125,12 @@ public class WhiteboardInstanceService {
     }
 
     @Transactional(readOnly = true)
-    public List<WhiteboardAdminInstanceResponse> listInstances(boolean includeExpired) {
+    public List<WhiteboardAdminInstanceResponse> listInstances(boolean includeExpired, Integer page, Integer size) {
         Instant now = Instant.now();
-        List<WhiteboardInstanceEntity> instances = includeExpired
-                ? repository.findAllByOrderByCreatedAtDesc()
-                : repository.findByExpireAtAfterOrderByCreatedAtDesc(now);
+        List<WhiteboardInstanceEntity> instances = fetchInstances(includeExpired, now, page, size);
+        Map<Long, MapNames> mapNameById = resolveMapNames(instances);
         return instances.stream()
-                .map(entity -> toAdminResponse(entity, now))
+                .map(entity -> toAdminResponse(entity, now, mapNameById))
                 .toList();
     }
 
@@ -168,8 +174,17 @@ public class WhiteboardInstanceService {
     }
 
     private WhiteboardInstanceEntity getActiveEntityOrThrow(String instanceId) {
-        return repository.findByInstanceIdAndExpireAtAfter(instanceId, Instant.now())
+        touchInstanceTtlOrThrow(instanceId);
+        return repository.findById(instanceId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Whiteboard instance not found or expired"));
+    }
+
+    private void touchInstanceTtlOrThrow(String instanceId) {
+        Instant now = Instant.now();
+        int touched = repository.touchExpireAtIfActive(instanceId, now, now.plus(RETENTION_DURATION));
+        if (touched == 0) {
+            throw new ResponseStatusException(NOT_FOUND, "Whiteboard instance not found or expired");
+        }
     }
 
     private WhiteboardInstanceResponse toResponse(WhiteboardInstanceEntity entity) {
@@ -182,16 +197,62 @@ public class WhiteboardInstanceService {
         );
     }
 
-    private WhiteboardAdminInstanceResponse toAdminResponse(WhiteboardInstanceEntity entity, Instant now) {
+    private List<WhiteboardInstanceEntity> fetchInstances(boolean includeExpired, Instant now, Integer page, Integer size) {
+        if (page == null && size == null) {
+            return includeExpired
+                    ? repository.findAllByOrderByCreatedAtDesc()
+                    : repository.findByExpireAtAfterOrderByCreatedAtDesc(now);
+        }
+
+        if (page == null || size == null) {
+            throw new ResponseStatusException(BAD_REQUEST, "Both page and size are required for pagination");
+        }
+        if (page < 0) {
+            throw new ResponseStatusException(BAD_REQUEST, "page must be greater than or equal to 0");
+        }
+        if (size <= 0) {
+            throw new ResponseStatusException(BAD_REQUEST, "size must be greater than 0");
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return includeExpired
+                ? repository.findAll(pageable).getContent()
+                : repository.findByExpireAtAfter(now, pageable).getContent();
+    }
+
+    private Map<Long, MapNames> resolveMapNames(List<WhiteboardInstanceEntity> instances) {
+        Set<Long> mapIds = instances.stream()
+                .map(WhiteboardInstanceEntity::getMapId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        if (mapIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return mapRepository.findAllById(mapIds).stream()
+                .collect(Collectors.toMap(
+                        TarkovMapEntity::getId,
+                        map -> new MapNames(map.getNameZh(), map.getNameEn())
+                ));
+    }
+
+    private WhiteboardAdminInstanceResponse toAdminResponse(WhiteboardInstanceEntity entity,
+                                                            Instant now,
+                                                            Map<Long, MapNames> mapNameById) {
+        MapNames mapNames = mapNameById.get(entity.getMapId());
         return new WhiteboardAdminInstanceResponse(
                 entity.getInstanceId(),
-                entity.getMapId(),
+                mapNames == null ? null : mapNames.nameZh(),
+                mapNames == null ? null : mapNames.nameEn(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 entity.getExpireAt(),
                 entity.getExpireAt().isAfter(now),
                 entity.getStateJson() != null && !entity.getStateJson().isBlank()
         );
+    }
+
+    private record MapNames(String nameZh, String nameEn) {
     }
 
     private void validateMapExists(Long mapId) {

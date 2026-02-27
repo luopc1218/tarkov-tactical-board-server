@@ -22,7 +22,7 @@ else
   exit 1
 fi
 
-echo "Starting MySQL and MinIO containers..."
+echo "Starting MySQL container..."
 "${COMPOSE_CMD[@]}" -f "${COMPOSE_FILE}" up -d
 
 MYSQL_CONTAINER="$("${COMPOSE_CMD[@]}" -f "${COMPOSE_FILE}" ps -q mysql)"
@@ -50,7 +50,5 @@ docker exec "${MYSQL_CONTAINER}" mysql -uroot "-p${MYSQL_ROOT_PASSWORD}" -e \
 echo
 echo "Docker services are ready:"
 echo "- MySQL: 127.0.0.1:3306 (root password from MYSQL_ROOT_PASSWORD, default: Peichun@92755)"
-echo "- MinIO API: http://localhost:9000"
-echo "- MinIO Console: http://localhost:9001 (default: minioadmin / minioadmin)"
 echo
 echo "Then run backend with: mvn spring-boot:run"

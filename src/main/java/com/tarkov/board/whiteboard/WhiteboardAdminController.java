@@ -29,8 +29,14 @@ public class WhiteboardAdminController {
     @GetMapping
     @Operation(summary = "管理端实例列表")
     public List<WhiteboardAdminInstanceResponse> listInstances(
-            @RequestParam(defaultValue = "true") boolean includeExpired) {
-        return instanceService.listInstances(includeExpired);
+            @RequestParam(defaultValue = "true") boolean includeExpired,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(name = "current", required = false) Integer current,
+            @RequestParam(name = "pageSize", required = false) Integer pageSize) {
+        Integer resolvedPage = page != null ? page : (current != null ? current - 1 : null);
+        Integer resolvedSize = size != null ? size : pageSize;
+        return instanceService.listInstances(includeExpired, resolvedPage, resolvedSize);
     }
 
     @DeleteMapping("/{instanceId}")
