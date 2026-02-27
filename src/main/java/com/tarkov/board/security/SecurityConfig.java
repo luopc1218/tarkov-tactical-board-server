@@ -46,21 +46,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of(
-                "null",
-                "file://",
-                "file://*",
-                "app://*",
-                "http://localhost:*",
-                "http://127.0.0.1:*",
-                "http://192.168.*:*",
-                "http://10.*:*",
-                "http://172.*:*",
-                "http://81.71.150.227",
-                "https://81.71.150.227",
-                "https://tarkovtacticalboard.site",
-                "https://www.tarkovtacticalboard.site"
-        ));
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
