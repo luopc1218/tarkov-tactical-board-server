@@ -10,3 +10,9 @@
 
 # Logs
 *.log
+
+# Local env / deployment backups
+.env
+.env.*
+!.env.example
+docker-compose.yml.bak.*

@@ -1,0 +1,46 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: tarkov_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: ${TZ:-Asia/Shanghai}
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - 3306:3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - tarkov_net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tarkov_app
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    ports:
+      - 127.0.0.1:18080:8080
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      APP_AUTH_ADMINUSERNAME: ${APP_ADMIN_USERNAME:-admin}
+      APP_AUTH_ADMINPASSWORDHASH: ${APP_ADMIN_PASSWORD_HASH:-604742y604741060474OTn77oohWpGwKB8hMYFLW.WJ1MxaFRr6.AF7O16CUxFmjDxgWre2O}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_JWT_EXPIRESECONDS: ${APP_JWT_EXPIRESECONDS:-7200}
+    networks:
+      - tarkov_net
+
+volumes:
+  mysql_data:
+
+networks:
+  tarkov_net:
+    driver: bridge
