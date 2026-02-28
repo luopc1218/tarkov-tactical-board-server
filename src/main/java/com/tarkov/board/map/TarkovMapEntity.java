@@ -15,9 +15,6 @@ public class TarkovMapEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "code", nullable = false, unique = true, length = 64)
-    private String code;
-
     @Column(name = "name_zh", nullable = false, length = 128)
     private String nameZh;
 
@@ -33,8 +30,7 @@ public class TarkovMapEntity {
     protected TarkovMapEntity() {
     }
 
-    public TarkovMapEntity(String code, String nameZh, String nameEn, String bannerPath, String mapPath) {
-        this.code = code;
+    public TarkovMapEntity(String nameZh, String nameEn, String bannerPath, String mapPath) {
         this.nameZh = nameZh;
         this.nameEn = nameEn;
         this.bannerPath = bannerPath;
@@ -43,14 +39,6 @@ public class TarkovMapEntity {
 
     public Long getId() {
         return id;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
     }
 
     public String getNameZh() {

@@ -1,6 +1,7 @@
 package com.tarkov.board.whiteboard;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,7 @@ public class WhiteboardAdminController {
     @GetMapping
     @Operation(summary = "管理端实例列表")
     public List<WhiteboardAdminInstanceResponse> listInstances(
+            @Parameter(description = "是否包含已过期实例，默认 true")
             @RequestParam(defaultValue = "true") boolean includeExpired,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,

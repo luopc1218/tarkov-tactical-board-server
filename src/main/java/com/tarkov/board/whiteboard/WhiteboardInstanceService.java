@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.List;
@@ -28,17 +27,19 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class WhiteboardInstanceService {
 
     private static final String WS_PATH_PREFIX = "/ws/whiteboard/";
-    private static final Duration RETENTION_DURATION = Duration.ofHours(24);
     private static final Set<String> SNAPSHOT_TYPES = Set.of("snapshot", "state_snapshot", "full_state");
 
     private final WhiteboardInstanceRepository repository;
+    private final WhiteboardChatMessageRepository chatMessageRepository;
     private final TarkovMapRepository mapRepository;
     private final ObjectMapper objectMapper;
 
     public WhiteboardInstanceService(WhiteboardInstanceRepository repository,
+                                     WhiteboardChatMessageRepository chatMessageRepository,
                                      TarkovMapRepository mapRepository,
                                      ObjectMapper objectMapper) {
         this.repository = repository;
+        this.chatMessageRepository = chatMessageRepository;
         this.mapRepository = mapRepository;
         this.objectMapper = objectMapper;
     }
@@ -51,7 +52,7 @@ public class WhiteboardInstanceService {
         Instant now = Instant.now();
         String instanceId = UUID.randomUUID().toString();
         WhiteboardInstanceEntity entity = new WhiteboardInstanceEntity(
-                instanceId, mapId, null, now, now, now.plus(RETENTION_DURATION));
+                instanceId, mapId, null, now, now, now.plus(WhiteboardRetention.INSTANCE_TTL));
         repository.save(entity);
         return toResponse(entity);
     }
@@ -64,7 +65,7 @@ public class WhiteboardInstanceService {
     @Transactional
     public boolean isInstanceActive(String instanceId) {
         Instant now = Instant.now();
-        return repository.touchExpireAtIfActive(instanceId, now, now.plus(RETENTION_DURATION)) > 0;
+        return repository.touchExpireAtIfActive(instanceId, now, now.plus(WhiteboardRetention.INSTANCE_TTL)) > 0;
     }
 
     @Transactional
@@ -139,19 +140,22 @@ public class WhiteboardInstanceService {
         if (!repository.existsByInstanceId(instanceId)) {
             throw new ResponseStatusException(NOT_FOUND, "Whiteboard instance not found");
         }
+        chatMessageRepository.deleteByInstanceId(instanceId);
         repository.deleteById(instanceId);
     }
 
     @Transactional
     public int cleanupExpiredInstances() {
-        return repository.deleteExpired(Instant.now());
+        int deleted = repository.deleteExpired(Instant.now());
+        chatMessageRepository.deleteOrphanMessages();
+        return deleted;
     }
 
     private void saveStateInternal(WhiteboardInstanceEntity entity, JsonNode state) {
         Instant now = Instant.now();
         entity.setStateJson(writeState(state));
         entity.setUpdatedAt(now);
-        entity.setExpireAt(now.plus(RETENTION_DURATION));
+        entity.setExpireAt(now.plus(WhiteboardRetention.INSTANCE_TTL));
     }
 
     private JsonNode parseState(String stateJson) {
@@ -181,7 +185,7 @@ public class WhiteboardInstanceService {
 
     private void touchInstanceTtlOrThrow(String instanceId) {
         Instant now = Instant.now();
-        int touched = repository.touchExpireAtIfActive(instanceId, now, now.plus(RETENTION_DURATION));
+        int touched = repository.touchExpireAtIfActive(instanceId, now, now.plus(WhiteboardRetention.INSTANCE_TTL));
         if (touched == 0) {
             throw new ResponseStatusException(NOT_FOUND, "Whiteboard instance not found or expired");
         }

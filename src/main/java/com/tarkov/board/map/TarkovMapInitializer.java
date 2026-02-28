@@ -27,7 +27,6 @@ public class TarkovMapInitializer {
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS tarkov_map (
                     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                    code VARCHAR(64) NOT NULL UNIQUE,
                     name_zh VARCHAR(128) NOT NULL,
                     name_en VARCHAR(128) NOT NULL,
                     banner_path VARCHAR(255) NULL,
@@ -37,17 +36,7 @@ public class TarkovMapInitializer {
 
         renameOldColumnsIfPresent();
         ensureNewColumnsPresent();
-
-        jdbcTemplate.update("""
-                UPDATE tarkov_map
-                SET banner_path = CONCAT('maps/banners/', code, '.png')
-                WHERE banner_path IS NULL OR banner_path = ''
-                """);
-        jdbcTemplate.update("""
-                UPDATE tarkov_map
-                SET map_path = CONCAT('maps/bodies/', code, '.png')
-                WHERE map_path IS NULL OR map_path = ''
-                """);
+        migrateAndDropCodeColumnIfPresent();
     }
 
     private void renameOldColumnsIfPresent() {
@@ -150,22 +139,53 @@ public class TarkovMapInitializer {
         }
     }
 
+    private void migrateAndDropCodeColumnIfPresent() {
+        Integer codeColumnCount = jdbcTemplate.queryForObject(
+                """
+                        SELECT COUNT(1)
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'tarkov_map'
+                          AND column_name = 'code'
+                        """,
+                Integer.class
+        );
+        if (codeColumnCount == null || codeColumnCount == 0) {
+            return;
+        }
+
+        jdbcTemplate.update("""
+                UPDATE tarkov_map
+                SET banner_path = CONCAT('maps/banners/', code, '.png')
+                WHERE (banner_path IS NULL OR banner_path = '')
+                  AND code IS NOT NULL AND code <> ''
+                """);
+        jdbcTemplate.update("""
+                UPDATE tarkov_map
+                SET map_path = CONCAT('maps/bodies/', code, '.png')
+                WHERE (map_path IS NULL OR map_path = '')
+                  AND code IS NOT NULL AND code <> ''
+                """);
+
+        jdbcTemplate.execute("ALTER TABLE tarkov_map DROP COLUMN code");
+    }
+
     private void seedDefaultMapsIfEmpty() {
         if (repository.count() > 0) {
             return;
         }
 
         List<TarkovMapEntity> defaults = List.of(
-                new TarkovMapEntity("ground-zero", "零地", "Ground Zero", "maps/banners/ground-zero.png", "maps/bodies/ground-zero.png"),
-                new TarkovMapEntity("factory", "工厂", "Factory", "maps/banners/factory.png", "maps/bodies/factory.png"),
-                new TarkovMapEntity("customs", "海关", "Customs", "maps/banners/customs.png", "maps/bodies/customs.png"),
-                new TarkovMapEntity("woods", "森林", "Woods", "maps/banners/woods.png", "maps/bodies/woods.png"),
-                new TarkovMapEntity("shoreline", "海岸线", "Shoreline", "maps/banners/shoreline.png", "maps/bodies/shoreline.png"),
-                new TarkovMapEntity("interchange", "立交桥", "Interchange", "maps/banners/interchange.png", "maps/bodies/interchange.png"),
-                new TarkovMapEntity("reserve", "储备站", "Reserve", "maps/banners/reserve.png", "maps/bodies/reserve.png"),
-                new TarkovMapEntity("lighthouse", "灯塔", "Lighthouse", "maps/banners/lighthouse.png", "maps/bodies/lighthouse.png"),
-                new TarkovMapEntity("streets-of-tarkov", "塔科夫街区", "Streets of Tarkov", "maps/banners/streets-of-tarkov.png", "maps/bodies/streets-of-tarkov.png"),
-                new TarkovMapEntity("the-lab", "实验室", "The Lab", "maps/banners/the-lab.png", "maps/bodies/the-lab.png")
+                new TarkovMapEntity("零地", "Ground Zero", "maps/banners/ground-zero.png", "maps/bodies/ground-zero.png"),
+                new TarkovMapEntity("工厂", "Factory", "maps/banners/factory.png", "maps/bodies/factory.png"),
+                new TarkovMapEntity("海关", "Customs", "maps/banners/customs.png", "maps/bodies/customs.png"),
+                new TarkovMapEntity("森林", "Woods", "maps/banners/woods.png", "maps/bodies/woods.png"),
+                new TarkovMapEntity("海岸线", "Shoreline", "maps/banners/shoreline.png", "maps/bodies/shoreline.png"),
+                new TarkovMapEntity("立交桥", "Interchange", "maps/banners/interchange.png", "maps/bodies/interchange.png"),
+                new TarkovMapEntity("储备站", "Reserve", "maps/banners/reserve.png", "maps/bodies/reserve.png"),
+                new TarkovMapEntity("灯塔", "Lighthouse", "maps/banners/lighthouse.png", "maps/bodies/lighthouse.png"),
+                new TarkovMapEntity("塔科夫街区", "Streets of Tarkov", "maps/banners/streets-of-tarkov.png", "maps/bodies/streets-of-tarkov.png"),
+                new TarkovMapEntity("实验室", "The Lab", "maps/banners/the-lab.png", "maps/bodies/the-lab.png")
         );
 
         repository.saveAll(defaults);

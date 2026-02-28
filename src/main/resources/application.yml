@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://81.71.150.227:3306/tarkov_board?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
-    username: ${SPRING_DATASOURCE_USERNAME:tarkov}
-    password: ${SPRING_DATASOURCE_PASSWORD:Tarkov@2026_DB}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/tarkov_board?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:Peichun@92755}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
