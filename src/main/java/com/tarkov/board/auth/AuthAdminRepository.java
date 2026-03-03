@@ -7,4 +7,6 @@ import java.util.Optional;
 public interface AuthAdminRepository extends JpaRepository<AuthAdminEntity, Long> {
 
     Optional<AuthAdminEntity> findByUsername(String username);
+
+    boolean existsByUsername(String username);
 }

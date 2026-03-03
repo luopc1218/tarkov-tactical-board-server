@@ -52,6 +52,10 @@ public class WhiteboardInstanceEntity {
         return mapId;
     }
 
+    public void setMapId(Long mapId) {
+        this.mapId = mapId;
+    }
+
     public String getStateJson() {
         return stateJson;
     }

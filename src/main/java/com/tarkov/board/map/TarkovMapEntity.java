@@ -27,14 +27,22 @@ public class TarkovMapEntity {
     @Column(name = "map_path", length = 255)
     private String mapPath;
 
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder;
+
     protected TarkovMapEntity() {
     }
 
     public TarkovMapEntity(String nameZh, String nameEn, String bannerPath, String mapPath) {
+        this(nameZh, nameEn, bannerPath, mapPath, 0);
+    }
+
+    public TarkovMapEntity(String nameZh, String nameEn, String bannerPath, String mapPath, Integer sortOrder) {
         this.nameZh = nameZh;
         this.nameEn = nameEn;
         this.bannerPath = bannerPath;
         this.mapPath = mapPath;
+        this.sortOrder = sortOrder;
     }
 
     public Long getId() {
@@ -71,5 +79,13 @@ public class TarkovMapEntity {
 
     public void setMapPath(String mapPath) {
         this.mapPath = mapPath;
+    }
+
+    public Integer getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder;
     }
 }

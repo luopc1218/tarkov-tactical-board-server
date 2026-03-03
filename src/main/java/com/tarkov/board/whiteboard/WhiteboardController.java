@@ -46,4 +46,11 @@ public class WhiteboardController {
                                              @Valid @RequestBody WhiteboardStateUpsertRequest request) {
         return instanceService.saveState(instanceId, request.state());
     }
+
+    @PutMapping("/instances/{instanceId}/map")
+    @Operation(summary = "切换实例地图", description = "切换实例当前地图，可选清空画布状态，并广播 map.changed 事件")
+    public WhiteboardInstanceResponse switchMap(@PathVariable String instanceId,
+                                                @Valid @RequestBody WhiteboardSwitchMapRequest request) {
+        return instanceService.switchMap(instanceId, request.mapId(), request.shouldResetState());
+    }
 }

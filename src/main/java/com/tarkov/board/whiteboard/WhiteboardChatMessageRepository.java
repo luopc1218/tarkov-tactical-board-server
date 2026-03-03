@@ -15,6 +15,9 @@ public interface WhiteboardChatMessageRepository extends JpaRepository<Whiteboar
     void deleteByInstanceId(String instanceId);
 
     @Modifying
+    void deleteByInstanceIdIn(List<String> instanceIds);
+
+    @Modifying
     @Query(value = """
             DELETE m
             FROM whiteboard_chat_message m

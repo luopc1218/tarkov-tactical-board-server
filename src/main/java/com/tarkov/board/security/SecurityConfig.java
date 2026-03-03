@@ -18,6 +18,13 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
+    private static final List<String> ALLOWED_ORIGIN_PATTERNS = List.of(
+            "https://luopc1218.github.io",
+            "null",
+            "file://",
+            "file://*"
+    );
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
@@ -46,7 +53,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOriginPatterns(ALLOWED_ORIGIN_PATTERNS);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Content-Disposition"));

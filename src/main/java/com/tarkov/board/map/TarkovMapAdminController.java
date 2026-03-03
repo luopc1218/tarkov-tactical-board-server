@@ -48,6 +48,12 @@ public class TarkovMapAdminController {
         return service.update(id, request);
     }
 
+    @PutMapping("/order")
+    @Operation(summary = "管理端调整地图排序")
+    public List<TarkovMapResponse> reorder(@Valid @RequestBody TarkovMapReorderRequest request) {
+        return service.reorder(request);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "管理端删除地图")

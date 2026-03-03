@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tarkov.board.map.TarkovMapEntity;
 import com.tarkov.board.map.TarkovMapRepository;
+import com.tarkov.board.websocket.WhiteboardRoomSessionManager;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -28,33 +30,44 @@ public class WhiteboardInstanceService {
 
     private static final String WS_PATH_PREFIX = "/ws/whiteboard/";
     private static final Set<String> SNAPSHOT_TYPES = Set.of("snapshot", "state_snapshot", "full_state");
+    private static final int MAX_INSTANCE_COUNT = 100;
 
     private final WhiteboardInstanceRepository repository;
     private final WhiteboardChatMessageRepository chatMessageRepository;
     private final TarkovMapRepository mapRepository;
+    private final WhiteboardRoomSessionManager roomSessionManager;
     private final ObjectMapper objectMapper;
+    private final ReentrantLock createInstanceLock = new ReentrantLock();
 
     public WhiteboardInstanceService(WhiteboardInstanceRepository repository,
                                      WhiteboardChatMessageRepository chatMessageRepository,
                                      TarkovMapRepository mapRepository,
+                                     WhiteboardRoomSessionManager roomSessionManager,
                                      ObjectMapper objectMapper) {
         this.repository = repository;
         this.chatMessageRepository = chatMessageRepository;
         this.mapRepository = mapRepository;
+        this.roomSessionManager = roomSessionManager;
         this.objectMapper = objectMapper;
     }
 
     @Transactional
     public WhiteboardInstanceResponse createInstance(Long mapId) {
-        cleanupExpiredInstances();
-        validateMapExists(mapId);
+        createInstanceLock.lock();
+        try {
+            validateMapExists(mapId);
+            cleanupExpiredInstances();
+            evictOldestInstancesIfNeededForCreate();
 
-        Instant now = Instant.now();
-        String instanceId = UUID.randomUUID().toString();
-        WhiteboardInstanceEntity entity = new WhiteboardInstanceEntity(
-                instanceId, mapId, null, now, now, now.plus(WhiteboardRetention.INSTANCE_TTL));
-        repository.save(entity);
-        return toResponse(entity);
+            Instant now = Instant.now();
+            String instanceId = UUID.randomUUID().toString();
+            WhiteboardInstanceEntity entity = new WhiteboardInstanceEntity(
+                    instanceId, mapId, null, now, now, now.plus(WhiteboardRetention.INSTANCE_TTL));
+            repository.save(entity);
+            return toResponse(entity);
+        } finally {
+            createInstanceLock.unlock();
+        }
     }
 
     @Transactional
@@ -90,6 +103,28 @@ public class WhiteboardInstanceService {
                 entity.getUpdatedAt(),
                 entity.getExpireAt()
         );
+    }
+
+    @Transactional
+    public WhiteboardInstanceResponse switchMap(String instanceId, Long mapId, boolean resetState) {
+        validateMapExists(mapId);
+        WhiteboardInstanceEntity entity = getActiveEntityOrThrow(instanceId);
+
+        boolean mapChanged = !mapId.equals(entity.getMapId());
+        Instant now = Instant.now();
+
+        entity.setMapId(mapId);
+        entity.setUpdatedAt(now);
+        entity.setExpireAt(now.plus(WhiteboardRetention.INSTANCE_TTL));
+        if (resetState) {
+            entity.setStateJson(null);
+        }
+        repository.save(entity);
+
+        if (mapChanged || resetState) {
+            roomSessionManager.broadcastMapChanged(instanceId, mapId, resetState, now);
+        }
+        return toResponse(entity);
     }
 
     @Transactional
@@ -142,6 +177,12 @@ public class WhiteboardInstanceService {
         }
         chatMessageRepository.deleteByInstanceId(instanceId);
         repository.deleteById(instanceId);
+    }
+
+    @Transactional
+    public void clearAllInstances() {
+        chatMessageRepository.deleteAllInBatch();
+        repository.deleteAllInBatch();
     }
 
     @Transactional
@@ -263,5 +304,27 @@ public class WhiteboardInstanceService {
         if (!mapRepository.existsById(mapId)) {
             throw new ResponseStatusException(BAD_REQUEST, "Map not found");
         }
+    }
+
+    private void evictOldestInstancesIfNeededForCreate() {
+        long currentCount = repository.count();
+        long overflow = currentCount - MAX_INSTANCE_COUNT + 1;
+        if (overflow <= 0) {
+            return;
+        }
+
+        int deleteCount = (int) overflow;
+        List<WhiteboardInstanceEntity> oldestInstances = repository.findAllByOrderByCreatedAtAsc(
+                PageRequest.of(0, deleteCount)
+        );
+        if (oldestInstances.isEmpty()) {
+            return;
+        }
+
+        List<String> oldestIds = oldestInstances.stream()
+                .map(WhiteboardInstanceEntity::getInstanceId)
+                .toList();
+        chatMessageRepository.deleteByInstanceIdIn(oldestIds);
+        repository.deleteAllByIdInBatch(oldestIds);
     }
 }

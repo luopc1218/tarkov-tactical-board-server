@@ -12,8 +12,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class WhiteboardWebSocketHandler extends TextWebSocketHandler {
@@ -22,10 +20,12 @@ public class WhiteboardWebSocketHandler extends TextWebSocketHandler {
     private static final String INSTANCE_ID_ATTR = "whiteboardInstanceId";
 
     private final WhiteboardInstanceService instanceService;
-    private final ConcurrentHashMap<String, Set<WebSocketSession>> roomSessions = new ConcurrentHashMap<>();
+    private final WhiteboardRoomSessionManager sessionManager;
 
-    public WhiteboardWebSocketHandler(WhiteboardInstanceService instanceService) {
+    public WhiteboardWebSocketHandler(WhiteboardInstanceService instanceService,
+                                      WhiteboardRoomSessionManager sessionManager) {
         this.instanceService = instanceService;
+        this.sessionManager = sessionManager;
     }
 
     @Override
@@ -41,7 +41,7 @@ public class WhiteboardWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        roomSessions.computeIfAbsent(instanceId, key -> ConcurrentHashMap.newKeySet()).add(session);
+        sessionManager.join(instanceId, session);
         session.getAttributes().put(INSTANCE_ID_ATTR, instanceId);
     }
 
@@ -58,7 +58,7 @@ public class WhiteboardWebSocketHandler extends TextWebSocketHandler {
         }
 
         instanceService.persistSnapshotFromWebSocket(instanceId, message.getPayload());
-        relayMessage(instanceId, session, message);
+        sessionManager.relay(instanceId, session, message);
     }
 
     @Override
@@ -68,33 +68,7 @@ public class WhiteboardWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        Set<WebSocketSession> sessions = roomSessions.get(instanceId);
-        if (sessions == null) {
-            return;
-        }
-        sessions.remove(session);
-        if (sessions.isEmpty()) {
-            roomSessions.remove(instanceId);
-        }
-    }
-
-    private void relayMessage(String instanceId, WebSocketSession sourceSession, TextMessage message) {
-        Set<WebSocketSession> sessions = roomSessions.get(instanceId);
-        if (sessions == null) {
-            return;
-        }
-
-        for (WebSocketSession targetSession : sessions) {
-            if (targetSession == sourceSession || !targetSession.isOpen()) {
-                continue;
-            }
-
-            try {
-                targetSession.sendMessage(message);
-            } catch (IOException ignored) {
-                sessions.remove(targetSession);
-            }
-        }
+        sessionManager.leave(instanceId, session);
     }
 
     private String resolveInstanceId(URI uri) {

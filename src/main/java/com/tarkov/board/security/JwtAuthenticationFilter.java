@@ -1,5 +1,6 @@
 package com.tarkov.board.security;
 
+import com.tarkov.board.auth.AuthAdminRepository;
 import com.tarkov.board.auth.JwtService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -21,9 +22,12 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final AuthAdminRepository authAdminRepository;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService,
+                                   AuthAdminRepository authAdminRepository) {
         this.jwtService = jwtService;
+        this.authAdminRepository = authAdminRepository;
     }
 
     @Override
@@ -39,6 +43,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = header.substring(7);
         try {
             String username = jwtService.parseUsername(token);
+            if (!authAdminRepository.existsByUsername(username)) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     username,
                     null,

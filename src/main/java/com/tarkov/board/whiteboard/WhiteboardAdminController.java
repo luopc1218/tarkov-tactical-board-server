@@ -47,4 +47,11 @@ public class WhiteboardAdminController {
     public void deleteInstance(@PathVariable String instanceId) {
         instanceService.deleteInstance(instanceId);
     }
+
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "管理端清空所有实例")
+    public void clearAllInstances() {
+        instanceService.clearAllInstances();
+    }
 }

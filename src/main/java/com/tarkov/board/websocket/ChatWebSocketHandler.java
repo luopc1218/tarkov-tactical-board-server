@@ -124,20 +124,21 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
 
         for (WebSocketSession targetSession : sessions) {
-            if (!targetSession.isOpen()) {
-                continue;
+            if (!sendToSession(targetSession, payloadObject)) {
+                sessions.remove(targetSession);
             }
-            sendToSession(targetSession, payloadObject);
         }
     }
 
-    private void sendToSession(WebSocketSession session, Object payloadObject) {
+    private boolean sendToSession(WebSocketSession session, Object payloadObject) {
         if (!session.isOpen()) {
-            return;
+            return false;
         }
         try {
             session.sendMessage(new TextMessage(objectMapper.writeValueAsString(payloadObject)));
-        } catch (IOException ignored) {
+            return true;
+        } catch (IOException | RuntimeException ignored) {
+            return false;
         }
     }
 

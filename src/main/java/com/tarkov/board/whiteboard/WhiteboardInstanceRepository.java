@@ -19,6 +19,8 @@ public interface WhiteboardInstanceRepository extends JpaRepository<WhiteboardIn
 
     List<WhiteboardInstanceEntity> findAllByOrderByCreatedAtDesc();
 
+    List<WhiteboardInstanceEntity> findAllByOrderByCreatedAtAsc(Pageable pageable);
+
     List<WhiteboardInstanceEntity> findByExpireAtAfterOrderByCreatedAtDesc(Instant now);
 
     Page<WhiteboardInstanceEntity> findByExpireAtAfter(Instant now, Pageable pageable);

@@ -11,6 +11,13 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
+    private static final String[] ALLOWED_ORIGIN_PATTERNS = {
+            "https://luopc1218.github.io",
+            "null",
+            "file://",
+            "file://*"
+    };
+
     private final ChatWebSocketHandler chatWebSocketHandler;
     private final WhiteboardWebSocketHandler whiteboardWebSocketHandler;
 
@@ -23,8 +30,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(chatWebSocketHandler, "/ws/chat", "/ws/chat/**")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(ALLOWED_ORIGIN_PATTERNS);
         registry.addHandler(whiteboardWebSocketHandler, "/ws/whiteboard/**")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(ALLOWED_ORIGIN_PATTERNS);
     }
 }

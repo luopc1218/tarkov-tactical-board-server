@@ -21,6 +21,7 @@ public class TarkovMapInitializer {
     public void init() {
         createTableIfNeeded();
         seedDefaultMapsIfEmpty();
+        normalizeSortOrder();
     }
 
     private void createTableIfNeeded() {
@@ -30,7 +31,8 @@ public class TarkovMapInitializer {
                     name_zh VARCHAR(128) NOT NULL,
                     name_en VARCHAR(128) NOT NULL,
                     banner_path VARCHAR(255) NULL,
-                    map_path VARCHAR(255) NULL
+                    map_path VARCHAR(255) NULL,
+                    sort_order INT NOT NULL DEFAULT 0
                 )
                 """);
 
@@ -137,6 +139,20 @@ public class TarkovMapInitializer {
         if (mapColumnCount != null && mapColumnCount == 0) {
             jdbcTemplate.execute("ALTER TABLE tarkov_map ADD COLUMN map_path VARCHAR(255) NULL");
         }
+
+        Integer sortColumnCount = jdbcTemplate.queryForObject(
+                """
+                        SELECT COUNT(1)
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'tarkov_map'
+                          AND column_name = 'sort_order'
+                        """,
+                Integer.class
+        );
+        if (sortColumnCount != null && sortColumnCount == 0) {
+            jdbcTemplate.execute("ALTER TABLE tarkov_map ADD COLUMN sort_order INT NOT NULL DEFAULT 0");
+        }
     }
 
     private void migrateAndDropCodeColumnIfPresent() {
@@ -189,5 +205,15 @@ public class TarkovMapInitializer {
         );
 
         repository.saveAll(defaults);
+    }
+
+    private void normalizeSortOrder() {
+        List<Long> ids = jdbcTemplate.queryForList(
+                "SELECT id FROM tarkov_map ORDER BY sort_order ASC, id ASC",
+                Long.class
+        );
+        for (int i = 0; i < ids.size(); i++) {
+            jdbcTemplate.update("UPDATE tarkov_map SET sort_order = ? WHERE id = ?", i + 1, ids.get(i));
+        }
     }
 }
