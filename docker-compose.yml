@@ -18,9 +18,8 @@ services:
       - tarkov_net
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/luopc1218/tarkov-tactical-board-server-backend:${APP_IMAGE_TAG:-latest}
+    pull_policy: always
     container_name: tarkov_app
     restart: unless-stopped
     depends_on:

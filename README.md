@@ -46,6 +46,31 @@ Language: [中文](#中文) | [English](#english)
 
 ### 打包与部署
 
+推荐流程：推送 `master` 或 `v*` tag 后，GitHub Actions 会自动构建并推送 GHCR 镜像：
+`ghcr.io/luopc1218/tarkov-tactical-board-server-backend`
+
+1. 服务器登录 GHCR（使用具备 `read:packages` 的 GitHub Token）
+   ```bash
+   echo "<YOUR_GITHUB_TOKEN>" | docker login ghcr.io -u <YOUR_GITHUB_USERNAME> --password-stdin
+   ```
+2. 配置部署环境变量（示例）
+   ```bash
+   cp .env.example .env
+   # 编辑 .env，至少设置 MYSQL_*/APP_JWT_SECRET/APP_ADMIN_PASSWORD_HASH
+   # 可选：APP_IMAGE_TAG=v1.5.4（默认 latest）
+   ```
+3. 拉取并启动后端镜像
+   ```bash
+   docker compose pull app
+   docker compose up -d app
+   ```
+4. 部署后验证
+   ```bash
+   curl http://127.0.0.1:18080/api/health
+   ```
+
+Jar 方式（手工部署）仍可使用：
+
 1. 打包
    ```bash
    mvn clean package -DskipTests
@@ -53,20 +78,6 @@ Language: [中文](#中文) | [English](#english)
 2. 运行 Jar
    ```bash
    java -jar target/tarkov-tactical-board-server-0.0.1-SNAPSHOT.jar
-   ```
-3. 推荐使用环境变量覆盖敏感配置
-   ```bash
-   export SPRING_DATASOURCE_URL="jdbc:mysql://127.0.0.1:3306/tarkov_board?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
-   export SPRING_DATASOURCE_USERNAME="root"
-   export SPRING_DATASOURCE_PASSWORD="your_password"
-   export APP_AUTH_ADMINUSERNAME="admin"
-   export APP_AUTH_ADMINPASSWORDHASH="your_bcrypt_hash"
-   export APP_JWT_SECRET="your_base64_secret"
-   java -jar target/tarkov-tactical-board-server-0.0.1-SNAPSHOT.jar
-   ```
-4. 部署后验证
-   ```bash
-   curl http://127.0.0.1:8080/api/health
    ```
 
 ## English
@@ -109,6 +120,31 @@ Language: [中文](#中文) | [English](#english)
 
 ### Build and Deploy
 
+Recommended flow: after pushing `master` or a `v*` tag, GitHub Actions builds and publishes image to GHCR:
+`ghcr.io/luopc1218/tarkov-tactical-board-server-backend`
+
+1. Login GHCR on server (token must include `read:packages`)
+   ```bash
+   echo "<YOUR_GITHUB_TOKEN>" | docker login ghcr.io -u <YOUR_GITHUB_USERNAME> --password-stdin
+   ```
+2. Prepare deploy env vars (example)
+   ```bash
+   cp .env.example .env
+   # edit .env, at least set MYSQL_*/APP_JWT_SECRET/APP_ADMIN_PASSWORD_HASH
+   # optional: APP_IMAGE_TAG=v1.5.4 (default latest)
+   ```
+3. Pull and start backend image
+   ```bash
+   docker compose pull app
+   docker compose up -d app
+   ```
+4. Post-deploy check
+   ```bash
+   curl http://127.0.0.1:18080/api/health
+   ```
+
+Jar flow (manual deployment) is still available:
+
 1. Build package
    ```bash
    mvn clean package -DskipTests
@@ -116,18 +152,4 @@ Language: [中文](#中文) | [English](#english)
 2. Run Jar
    ```bash
    java -jar target/tarkov-tactical-board-server-0.0.1-SNAPSHOT.jar
-   ```
-3. Recommended: override sensitive config with env vars
-   ```bash
-   export SPRING_DATASOURCE_URL="jdbc:mysql://127.0.0.1:3306/tarkov_board?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
-   export SPRING_DATASOURCE_USERNAME="root"
-   export SPRING_DATASOURCE_PASSWORD="your_password"
-   export APP_AUTH_ADMINUSERNAME="admin"
-   export APP_AUTH_ADMINPASSWORDHASH="your_bcrypt_hash"
-   export APP_JWT_SECRET="your_base64_secret"
-   java -jar target/tarkov-tactical-board-server-0.0.1-SNAPSHOT.jar
-   ```
-4. Post-deploy check
-   ```bash
-   curl http://127.0.0.1:8080/api/health
    ```
