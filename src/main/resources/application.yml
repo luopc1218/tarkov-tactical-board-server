@@ -2,10 +2,13 @@ server:
   port: 8080
 
 spring:
+  config:
+    # Allow IDE/local runs to read environment-style key=value pairs from the project root .env file.
+    import: optional:file:.env[.properties]
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/tarkov_board?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:Peichun@92755}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
