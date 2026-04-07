@@ -1,0 +1,83 @@
+services:
+  proxy:
+    image: caddy:2.10
+    container_name: tarkov_proxy
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - public
+      - internal
+
+  mysql:
+    image: mysql:8.4
+    container_name: tarkov_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: ${TZ:-Asia/Shanghai}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - internal
+
+  app:
+    image: ${APP_IMAGE_REPOSITORY:-luopc1218docker/tarkov-tactical-board-server}:${APP_IMAGE_TAG:-latest}
+    container_name: tarkov_app
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      APP_AUTH_ADMINUSERNAME: ${APP_ADMIN_USERNAME:-admin}
+      APP_AUTH_ADMINPASSWORDHASH: ${APP_ADMIN_PASSWORD_HASH}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_JWT_EXPIRESECONDS: ${APP_JWT_EXPIRESECONDS:-7200}
+    networks:
+      - internal
+
+  frontend:
+    image: ${FRONTEND_IMAGE_REPOSITORY:-luopc1218docker/tarkov-tactical-board-frontend}:${FRONTEND_IMAGE_TAG:-latest}
+    container_name: tarkov_frontend
+    pull_policy: always
+    restart: unless-stopped
+    networks:
+      - internal
+
+volumes:
+  mysql_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  public:
+    driver: bridge
+  internal:
+    driver: bridge
