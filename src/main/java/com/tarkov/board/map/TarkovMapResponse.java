@@ -4,6 +4,6 @@ public record TarkovMapResponse(Long id,
                                 String nameZh,
                                 String nameEn,
                                 Integer sortOrder,
-                                String bannerPath,
-                                String mapPath) {
+                                String bannerFileName,
+                                String mapFileName) {
 }

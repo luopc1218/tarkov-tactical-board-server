@@ -21,11 +21,11 @@ public class TarkovMapEntity {
     @Column(name = "name_en", nullable = false, length = 128)
     private String nameEn;
 
-    @Column(name = "banner_path", length = 255)
-    private String bannerPath;
+    @Column(name = "banner_file_name", length = 255)
+    private String bannerFileName;
 
-    @Column(name = "map_path", length = 255)
-    private String mapPath;
+    @Column(name = "map_file_name", length = 255)
+    private String mapFileName;
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
@@ -33,15 +33,15 @@ public class TarkovMapEntity {
     protected TarkovMapEntity() {
     }
 
-    public TarkovMapEntity(String nameZh, String nameEn, String bannerPath, String mapPath) {
-        this(nameZh, nameEn, bannerPath, mapPath, 0);
+    public TarkovMapEntity(String nameZh, String nameEn, String bannerFileName, String mapFileName) {
+        this(nameZh, nameEn, bannerFileName, mapFileName, 0);
     }
 
-    public TarkovMapEntity(String nameZh, String nameEn, String bannerPath, String mapPath, Integer sortOrder) {
+    public TarkovMapEntity(String nameZh, String nameEn, String bannerFileName, String mapFileName, Integer sortOrder) {
         this.nameZh = nameZh;
         this.nameEn = nameEn;
-        this.bannerPath = bannerPath;
-        this.mapPath = mapPath;
+        this.bannerFileName = bannerFileName;
+        this.mapFileName = mapFileName;
         this.sortOrder = sortOrder;
     }
 
@@ -65,20 +65,20 @@ public class TarkovMapEntity {
         this.nameEn = nameEn;
     }
 
-    public String getBannerPath() {
-        return bannerPath;
+    public String getBannerFileName() {
+        return bannerFileName;
     }
 
-    public void setBannerPath(String bannerPath) {
-        this.bannerPath = bannerPath;
+    public void setBannerFileName(String bannerFileName) {
+        this.bannerFileName = bannerFileName;
     }
 
-    public String getMapPath() {
-        return mapPath;
+    public String getMapFileName() {
+        return mapFileName;
     }
 
-    public void setMapPath(String mapPath) {
-        this.mapPath = mapPath;
+    public void setMapFileName(String mapFileName) {
+        this.mapFileName = mapFileName;
     }
 
     public Integer getSortOrder() {

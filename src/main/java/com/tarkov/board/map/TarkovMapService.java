@@ -34,8 +34,8 @@ public class TarkovMapService {
         TarkovMapEntity entity = new TarkovMapEntity(
                 request.nameZh(),
                 request.nameEn(),
-                request.bannerPath(),
-                request.mapPath(),
+                request.bannerFileName(),
+                request.mapFileName(),
                 repository.findMaxSortOrder() + 1
         );
         return toResponse(repository.save(entity));
@@ -48,8 +48,8 @@ public class TarkovMapService {
 
         entity.setNameZh(request.nameZh());
         entity.setNameEn(request.nameEn());
-        entity.setBannerPath(request.bannerPath());
-        entity.setMapPath(request.mapPath());
+        entity.setBannerFileName(request.bannerFileName());
+        entity.setMapFileName(request.mapFileName());
 
         return toResponse(repository.save(entity));
     }
@@ -100,8 +100,8 @@ public class TarkovMapService {
                 entity.getNameZh(),
                 entity.getNameEn(),
                 entity.getSortOrder(),
-                entity.getBannerPath(),
-                entity.getMapPath()
+                entity.getBannerFileName(),
+                entity.getMapFileName()
         );
     }
 

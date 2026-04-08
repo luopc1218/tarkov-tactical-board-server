@@ -80,8 +80,10 @@ Language: [中文](#中文) | [English](#english)
    cp .env.example .env
    ```
 2. 编辑 `.env`，至少设置：
+   - `MYSQL_HOST`
    - `MYSQL_ROOT_PASSWORD`
    - `MYSQL_DATABASE`
+   - `SERVER_PORT`
    - `APP_ADMIN_PASSWORD_HASH`
    - `APP_JWT_SECRET`
    - `APP_DOMAIN`
@@ -142,8 +144,10 @@ Language: [中文](#中文) | [English](#english)
    cp .env.example .env
    ```
 2. 编辑 `.env`，至少设置：
+   - `MYSQL_HOST`
    - `MYSQL_ROOT_PASSWORD`
    - `MYSQL_DATABASE`
+   - `SERVER_PORT`
    - `APP_ADMIN_PASSWORD_HASH`
    - `APP_JWT_SECRET`
    - `APP_IMAGE_REPOSITORY`

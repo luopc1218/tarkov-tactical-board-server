@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 public record TarkovMapUpsertRequest(
         @NotBlank @Size(max = 128) String nameZh,
         @NotBlank @Size(max = 128) String nameEn,
-        @NotBlank @Size(max = 255) String bannerPath,
-        @NotBlank @Size(max = 255) String mapPath
+        @NotBlank @Size(max = 255) String bannerFileName,
+        @NotBlank @Size(max = 255) String mapFileName
 ) {
 }

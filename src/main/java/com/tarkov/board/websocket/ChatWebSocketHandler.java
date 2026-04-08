@@ -156,10 +156,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     }
 
     private String resolveInstanceIdFromPath(String path) {
-        if (!StringUtils.hasText(path) || !path.startsWith(CHAT_PATH_PREFIX)) {
+        if (!StringUtils.hasText(path)) {
             return null;
         }
-        String raw = path.substring(CHAT_PATH_PREFIX.length());
+
+        int prefixIndex = path.indexOf(CHAT_PATH_PREFIX);
+        if (prefixIndex < 0) {
+            return null;
+        }
+
+        String raw = path.substring(prefixIndex + CHAT_PATH_PREFIX.length());
         String instanceId = raw.contains("/") ? raw.substring(0, raw.indexOf('/')) : raw;
         return StringUtils.hasText(instanceId) ? instanceId : null;
     }

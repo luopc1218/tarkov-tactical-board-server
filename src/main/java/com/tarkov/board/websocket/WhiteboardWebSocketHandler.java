@@ -85,10 +85,16 @@ public class WhiteboardWebSocketHandler extends TextWebSocketHandler {
     }
 
     private String resolveInstanceIdFromPath(String path) {
-        if (!StringUtils.hasText(path) || !path.startsWith(WHITEBOARD_PATH_PREFIX)) {
+        if (!StringUtils.hasText(path)) {
             return null;
         }
-        String raw = path.substring(WHITEBOARD_PATH_PREFIX.length());
+
+        int prefixIndex = path.indexOf(WHITEBOARD_PATH_PREFIX);
+        if (prefixIndex < 0) {
+            return null;
+        }
+
+        String raw = path.substring(prefixIndex + WHITEBOARD_PATH_PREFIX.length());
         String instanceId = raw.contains("/") ? raw.substring(0, raw.indexOf('/')) : raw;
         return StringUtils.hasText(instanceId) ? instanceId : null;
     }
