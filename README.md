@@ -79,6 +79,8 @@ Language: [中文](#中文) | [English](#english)
    ```
 2. 编辑 `.env`，至少设置：
    - `MYSQL_HOST`
+   - `MYSQL_BIND_ADDRESS`
+   - `MYSQL_PORT`
    - `MYSQL_ROOT_PASSWORD`
    - `MYSQL_DATABASE`
    - `SERVER_PORT`
@@ -113,6 +115,8 @@ Language: [中文](#中文) | [English](#english)
   ```env
   APP_IMAGE_REPOSITORY=luopc1218docker/tarkov-tactical-board-server
   ```
+- `MYSQL_HOST` 在同一个 compose 内建议设置为 `mysql`
+- `mysql` 会绑定到 `${MYSQL_BIND_ADDRESS}:${MYSQL_PORT}`，便于你按指定端口从宿主机连接
 - 首次启动时，应用会自动创建基础表并初始化默认数据。
 - `app` 会绑定到 `${APP_BIND_ADDRESS}:${APP_PORT}`，便于宿主机上的 Nginx 或其他反向代理接入。
 

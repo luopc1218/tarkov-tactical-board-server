@@ -8,7 +8,7 @@ spring:
     # Allow IDE/local runs to read environment-style key=value pairs from the project root .env file.
     import: optional:file:.env[.properties]
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${MYSQL_HOST:localhost}:3306/${MYSQL_DATABASE:tarkov_board}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:tarkov_board}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:${MYSQL_ROOT_PASSWORD:root}}
     driver-class-name: com.mysql.cj.jdbc.Driver
