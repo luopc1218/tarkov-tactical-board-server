@@ -1,5 +1,7 @@
 server:
   port: 8080
+  servlet:
+    context-path: ${SERVER_SERVLET_CONTEXT_PATH:}
 
 spring:
   config:
@@ -8,7 +10,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/tarkov_board?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:${MYSQL_ROOT_PASSWORD:root}}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:

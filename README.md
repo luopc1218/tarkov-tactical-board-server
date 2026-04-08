@@ -33,6 +33,7 @@ Language: [中文](#中文) | [English](#english)
    docker compose -f docker/docker-compose.dev.yml down
    ```
 3. 检查配置
+   - 本地开发运行 `mvn spring-boot:run` 时，会读取项目根目录 `.env`，因为已配置 `spring.config.import: optional:file:.env[.properties]`
    - 文件：`src/main/resources/application.yml`
    - 重点项：`spring.datasource.*`、`app.auth.*`、`app.jwt.*`
 4. 启动后端
@@ -52,7 +53,7 @@ Language: [中文](#中文) | [English](#english)
 1. 配置部署环境变量（示例）
    ```bash
    cp .env.example .env
-   # 编辑 .env，至少设置 MYSQL_*/APP_JWT_SECRET/APP_ADMIN_PASSWORD_HASH
+   # 编辑 .env，至少设置 MYSQL_ROOT_PASSWORD / APP_JWT_SECRET / APP_ADMIN_PASSWORD_HASH
    # 可选：APP_IMAGE_REPOSITORY / APP_IMAGE_TAG
    ```
 2. 拉取并启动后端镜像
@@ -81,8 +82,6 @@ Language: [中文](#中文) | [English](#english)
 2. 编辑 `.env`，至少设置：
    - `MYSQL_ROOT_PASSWORD`
    - `MYSQL_DATABASE`
-   - `MYSQL_USER`
-   - `MYSQL_PASSWORD`
    - `APP_ADMIN_PASSWORD_HASH`
    - `APP_JWT_SECRET`
    - `APP_DOMAIN`
@@ -145,8 +144,6 @@ Language: [中文](#中文) | [English](#english)
 2. 编辑 `.env`，至少设置：
    - `MYSQL_ROOT_PASSWORD`
    - `MYSQL_DATABASE`
-   - `MYSQL_USER`
-   - `MYSQL_PASSWORD`
    - `APP_ADMIN_PASSWORD_HASH`
    - `APP_JWT_SECRET`
    - `APP_IMAGE_REPOSITORY`

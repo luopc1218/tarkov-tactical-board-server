@@ -6,18 +6,19 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       TZ: ${TZ:-Asia/Shanghai}
     command:
+      - --port=${MYSQL_PORT:-10003}
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "${MYSQL_BIND_ADDRESS:-127.0.0.1}:${MYSQL_PORT:-10003}:${MYSQL_PORT:-10003}"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
       test:
         - CMD-SHELL
-        - mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent
+        - mysqladmin ping -h 127.0.0.1 -P ${MYSQL_PORT:-10003} -uroot -p$$MYSQL_ROOT_PASSWORD --silent
       interval: 10s
       timeout: 5s
       retries: 12
@@ -36,9 +37,10 @@ services:
     ports:
       - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-18080}:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:${MYSQL_PORT:-10003}/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      SERVER_SERVLET_CONTEXT_PATH: ${SERVER_SERVLET_CONTEXT_PATH:-}
       APP_AUTH_ADMINUSERNAME: ${APP_ADMIN_USERNAME:-admin}
       APP_AUTH_ADMINPASSWORDHASH: ${APP_ADMIN_PASSWORD_HASH}
       APP_JWT_SECRET: ${APP_JWT_SECRET}
