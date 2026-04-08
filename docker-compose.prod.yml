@@ -1,24 +1,4 @@
 services:
-  proxy:
-    image: caddy:2.10
-    container_name: tarkov_proxy
-    restart: unless-stopped
-    depends_on:
-      - app
-    environment:
-      APP_DOMAIN: ${APP_DOMAIN}
-      SERVER_PORT: ${SERVER_PORT:-8080}
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - public
-      - internal
-
   mysql:
     image: mysql:8.4
     container_name: tarkov_mysql
@@ -51,6 +31,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-18080}:${SERVER_PORT:-8080}"
     environment:
       SERVER_PORT: ${SERVER_PORT:-8080}
       SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-mysql}:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
@@ -64,21 +46,9 @@ services:
     networks:
       - internal
 
-  frontend:
-    image: ${FRONTEND_IMAGE_REPOSITORY:-luopc1218docker/tarkov-tactical-board-frontend}:${FRONTEND_IMAGE_TAG:-latest}
-    container_name: tarkov_frontend
-    pull_policy: always
-    restart: unless-stopped
-    networks:
-      - internal
-
 volumes:
   mysql_data:
-  caddy_data:
-  caddy_config:
 
 networks:
-  public:
-    driver: bridge
   internal:
     driver: bridge

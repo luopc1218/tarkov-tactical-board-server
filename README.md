@@ -68,11 +68,9 @@ Language: [中文](#中文) | [English](#english)
 
 ### 生产环境 Docker 部署（推荐）
 
-推荐使用根目录的 `docker-compose.prod.yml`，并采用同域部署：
+推荐使用根目录的 `docker-compose.prod.yml`，只部署后端与 MySQL：
 
-- `proxy`：Caddy，负责 HTTPS，并把 `/api/*`、`/ws/*` 转发到后端，其余请求转发到前端
-- `frontend`：前端容器，对外不直接暴露端口
-- `app`：Spring Boot 后端，对外不直接暴露端口
+- `app`：Spring Boot 后端
 - `mysql`：MySQL 8.4，数据持久化到 Docker volume
 
 1. 准备环境变量
@@ -86,32 +84,26 @@ Language: [中文](#中文) | [English](#english)
    - `SERVER_PORT`
    - `APP_ADMIN_PASSWORD_HASH`
    - `APP_JWT_SECRET`
-   - `APP_DOMAIN`
    - `APP_IMAGE_REPOSITORY`
-   - `FRONTEND_IMAGE_REPOSITORY`
    - `APP_IMAGE_TAG`
-   - `FRONTEND_IMAGE_TAG`
-3. 在 `.env` 中设置统一站点域名供 Caddy 自动签发 HTTPS 证书：
-   ```env
-   APP_DOMAIN=app.example.com
-   ```
-4. 如果 Docker Hub 镜像是私有仓库，先登录：
+   - `APP_BIND_ADDRESS`
+   - `APP_PORT`
+3. 如果 Docker Hub 镜像是私有仓库，先登录：
    ```bash
    docker login
    ```
    如果镜像是公开仓库，可以跳过这一步。
-5. 启动服务
+4. 启动服务
    ```bash
    docker compose -f docker-compose.prod.yml --env-file .env up -d
    ```
-6. 更新服务
+5. 更新服务
    ```bash
    docker compose -f docker-compose.prod.yml --env-file .env pull
    docker compose -f docker-compose.prod.yml --env-file .env up -d
    ```
-7. 查看日志
+6. 查看日志
    ```bash
-   docker compose -f docker-compose.prod.yml --env-file .env logs -f frontend
    docker compose -f docker-compose.prod.yml --env-file .env logs -f app
    ```
 
@@ -121,13 +113,8 @@ Language: [中文](#中文) | [English](#english)
   ```env
   APP_IMAGE_REPOSITORY=luopc1218docker/tarkov-tactical-board-server
   ```
-- `FRONTEND_IMAGE_REPOSITORY` 默认为 Docker Hub 仓库：
-  ```env
-  FRONTEND_IMAGE_REPOSITORY=luopc1218docker/tarkov-tactical-board-frontend
-  ```
-- 同域部署下，浏览器访问入口统一为 `https://APP_DOMAIN/`，后端接口走 `https://APP_DOMAIN/api/...`，WebSocket 走 `wss://APP_DOMAIN/ws/...`。
 - 首次启动时，应用会自动创建基础表并初始化默认数据。
-- `frontend`、`app`、`mysql` 都不会暴露到宿主机端口，只有 `proxy` 对外开放。
+- `app` 会绑定到 `${APP_BIND_ADDRESS}:${APP_PORT}`，便于宿主机上的 Nginx 或其他反向代理接入。
 
 ### 宿主机 Nginx 反代部署
 
