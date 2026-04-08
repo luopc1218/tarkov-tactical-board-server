@@ -1,20 +1,32 @@
 package com.tarkov.board.map;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class TarkovMapInitializer {
 
+    private static final String MAP_SEED_RESOURCE = "seeds/tarkov-maps.json";
+
     private final JdbcTemplate jdbcTemplate;
     private final TarkovMapRepository repository;
+    private final ObjectMapper objectMapper;
 
-    public TarkovMapInitializer(JdbcTemplate jdbcTemplate, TarkovMapRepository repository) {
+    public TarkovMapInitializer(JdbcTemplate jdbcTemplate,
+                                TarkovMapRepository repository,
+                                ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.repository = repository;
+        this.objectMapper = objectMapper;
     }
 
     @PostConstruct
@@ -218,13 +230,13 @@ public class TarkovMapInitializer {
 
         jdbcTemplate.update("""
                 UPDATE tarkov_map
-                SET banner_file_name = CONCAT('maps/banners/', code, '.png')
+                SET banner_file_name = CONCAT('Banner_', code, '.png')
                 WHERE (banner_file_name IS NULL OR banner_file_name = '')
                   AND code IS NOT NULL AND code <> ''
                 """);
         jdbcTemplate.update("""
                 UPDATE tarkov_map
-                SET map_file_name = CONCAT('maps/bodies/', code, '.png')
+                SET map_file_name = CONCAT(code, '.png')
                 WHERE (map_file_name IS NULL OR map_file_name = '')
                   AND code IS NOT NULL AND code <> ''
                 """);
@@ -237,20 +249,29 @@ public class TarkovMapInitializer {
             return;
         }
 
-        List<TarkovMapEntity> defaults = List.of(
-                new TarkovMapEntity("零地", "Ground Zero", "maps/banners/ground-zero.png", "maps/bodies/ground-zero.png"),
-                new TarkovMapEntity("工厂", "Factory", "maps/banners/factory.png", "maps/bodies/factory.png"),
-                new TarkovMapEntity("海关", "Customs", "maps/banners/customs.png", "maps/bodies/customs.png"),
-                new TarkovMapEntity("森林", "Woods", "maps/banners/woods.png", "maps/bodies/woods.png"),
-                new TarkovMapEntity("海岸线", "Shoreline", "maps/banners/shoreline.png", "maps/bodies/shoreline.png"),
-                new TarkovMapEntity("立交桥", "Interchange", "maps/banners/interchange.png", "maps/bodies/interchange.png"),
-                new TarkovMapEntity("储备站", "Reserve", "maps/banners/reserve.png", "maps/bodies/reserve.png"),
-                new TarkovMapEntity("灯塔", "Lighthouse", "maps/banners/lighthouse.png", "maps/bodies/lighthouse.png"),
-                new TarkovMapEntity("塔科夫街区", "Streets of Tarkov", "maps/banners/streets-of-tarkov.png", "maps/bodies/streets-of-tarkov.png"),
-                new TarkovMapEntity("实验室", "The Lab", "maps/banners/the-lab.png", "maps/bodies/the-lab.png")
-        );
+        repository.saveAll(loadSeedMaps());
+    }
 
-        repository.saveAll(defaults);
+    private List<TarkovMapEntity> loadSeedMaps() {
+        ClassPathResource resource = new ClassPathResource(MAP_SEED_RESOURCE);
+        try (InputStream inputStream = resource.getInputStream()) {
+            List<TarkovMapSeedItem> items = objectMapper.readValue(
+                    inputStream,
+                    new TypeReference<>() {
+                    }
+            );
+            return items.stream()
+                    .map(item -> new TarkovMapEntity(
+                            item.nameZh(),
+                            item.nameEn(),
+                            item.bannerFileName(),
+                            item.mapFileName(),
+                            item.sortOrder()
+                    ))
+                    .collect(Collectors.toList());
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to load map seed data from " + MAP_SEED_RESOURCE, exception);
+        }
     }
 
     private void normalizeSortOrder() {
@@ -261,5 +282,12 @@ public class TarkovMapInitializer {
         for (int i = 0; i < ids.size(); i++) {
             jdbcTemplate.update("UPDATE tarkov_map SET sort_order = ? WHERE id = ?", i + 1, ids.get(i));
         }
+    }
+
+    private record TarkovMapSeedItem(String nameZh,
+                                     String nameEn,
+                                     String bannerFileName,
+                                     String mapFileName,
+                                     Integer sortOrder) {
     }
 }
