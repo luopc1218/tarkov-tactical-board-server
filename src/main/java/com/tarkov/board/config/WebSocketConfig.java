@@ -12,14 +12,7 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 public class WebSocketConfig implements WebSocketConfigurer {
 
     private static final String[] ALLOWED_ORIGIN_PATTERNS = {
-            "http://localhost:*",
-            "http://127.0.0.1:*",
-            "https://localhost:*",
-            "https://127.0.0.1:*",
-            "https://luopc1218.github.io",
-            "null",
-            "file://",
-            "file://*"
+            "*"
     };
 
     private final ChatWebSocketHandler chatWebSocketHandler;

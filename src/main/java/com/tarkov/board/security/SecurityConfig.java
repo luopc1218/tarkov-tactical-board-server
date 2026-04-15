@@ -19,14 +19,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private static final List<String> ALLOWED_ORIGIN_PATTERNS = List.of(
-            "http://localhost:*",
-            "http://127.0.0.1:*",
-            "https://localhost:*",
-            "https://127.0.0.1:*",
-            "https://luopc1218.github.io",
-            "null",
-            "file://",
-            "file://*"
+            "*"
     );
 
     @Bean

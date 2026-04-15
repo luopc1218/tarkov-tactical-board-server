@@ -45,6 +45,50 @@ Language: [中文](#中文) | [English](#english)
    curl http://localhost:8080/api/health
    ```
 
+### 本地 MySQL 预置数据与联调
+
+如果你希望前端本地开发时直接连本地 MySQL 调试，推荐按下面的顺序：
+
+1. 启动本地 MySQL（Docker）
+   ```bash
+   ./scripts/start-docker.sh
+   ```
+   说明：
+   - 会启动 `docker/docker-compose.dev.yml` 里的 MySQL 8.4
+   - 会自动创建数据库 `tarkov_board`
+   - 默认对宿主机暴露 `127.0.0.1:3306`
+2. 启动后端并自动预置数据
+   ```bash
+   mvn spring-boot:run
+   ```
+   或者直接一键启动：
+   ```bash
+   ./scripts/dev-local.sh
+   ```
+   说明：
+   - 后端启动时会自动创建表
+   - `tarkov_map` 会从 `src/main/resources/seeds/tarkov-maps.json` 自动灌入默认地图数据
+   - `auth_admin` 会自动创建默认管理员账号
+   - `./scripts/dev-local.sh` 会强制让 Spring Boot 连接开发 MySQL `127.0.0.1:3306`
+3. 验证本地数据库里已经有预置数据
+   ```bash
+   mysql -h127.0.0.1 -P3306 -uroot -p
+   ```
+   然后执行：
+   ```sql
+   USE tarkov_board;
+   SELECT COUNT(*) AS map_count FROM tarkov_map;
+   SELECT username, created_at FROM auth_admin;
+   ```
+
+默认情况下，项目根目录 `.env` 提供的是部署/代理场景的端口：
+
+- MySQL：`127.0.0.1:10003`
+- 后端：`http://127.0.0.1:10002/eftboard-server`
+
+如果你使用 `docker-compose.nginx.yml` 或 `docker-compose.prod.yml`，可以沿用这组端口。
+如果你使用开发脚本 `./scripts/start-docker.sh`，则 MySQL 走 `127.0.0.1:3306`；此时推荐直接使用 `./scripts/dev-local.sh` 启动后端，它会自动覆盖成正确的开发端口。
+
 ### 打包与部署
 
 推荐流程：推送 `master` 或 `v*` tag 后，GitHub Actions 自动构建并推送 Docker Hub 镜像：
