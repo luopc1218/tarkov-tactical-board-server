@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tarkov.board.map.TarkovMapEntity;
 import com.tarkov.board.map.TarkovMapRepository;
+import com.tarkov.board.mapintel.EftarkovMapIntelService;
+import com.tarkov.board.mapintel.TarkovMapLootService;
+import com.tarkov.board.mapintel.WhiteboardMapIntelResponse;
 import com.tarkov.board.websocket.WhiteboardRoomSessionManager;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,27 +31,29 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @Service
 public class WhiteboardInstanceService {
 
-    private static final String WS_PATH_PREFIX = "/ws/whiteboard/";
     private static final Set<String> SNAPSHOT_TYPES = Set.of("snapshot", "state_snapshot", "full_state");
     private static final int MAX_INSTANCE_COUNT = 100;
 
     private final WhiteboardInstanceRepository repository;
-    private final WhiteboardChatMessageRepository chatMessageRepository;
     private final TarkovMapRepository mapRepository;
     private final WhiteboardRoomSessionManager roomSessionManager;
     private final ObjectMapper objectMapper;
+    private final EftarkovMapIntelService mapIntelService;
+    private final TarkovMapLootService mapLootService;
     private final ReentrantLock createInstanceLock = new ReentrantLock();
 
     public WhiteboardInstanceService(WhiteboardInstanceRepository repository,
-                                     WhiteboardChatMessageRepository chatMessageRepository,
                                      TarkovMapRepository mapRepository,
                                      WhiteboardRoomSessionManager roomSessionManager,
-                                     ObjectMapper objectMapper) {
+                                     ObjectMapper objectMapper,
+                                     EftarkovMapIntelService mapIntelService,
+                                     TarkovMapLootService mapLootService) {
         this.repository = repository;
-        this.chatMessageRepository = chatMessageRepository;
         this.mapRepository = mapRepository;
         this.roomSessionManager = roomSessionManager;
         this.objectMapper = objectMapper;
+        this.mapIntelService = mapIntelService;
+        this.mapLootService = mapLootService;
     }
 
     @Transactional
@@ -102,6 +107,26 @@ public class WhiteboardInstanceService {
                 parseState(entity.getStateJson()),
                 entity.getUpdatedAt(),
                 entity.getExpireAt()
+        );
+    }
+
+    @Transactional
+    public WhiteboardMapIntelResponse getMapIntel(String instanceId) {
+        WhiteboardInstanceEntity entity = getActiveEntityOrThrow(instanceId);
+        if (entity.getMapId() == null) {
+            throw new ResponseStatusException(BAD_REQUEST, "Current instance has no map selected");
+        }
+
+        TarkovMapEntity map = mapRepository.findById(entity.getMapId())
+                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Map not found"));
+
+        return new WhiteboardMapIntelResponse(
+                map.getId(),
+                map.getNameZh(),
+                map.getNameEn(),
+                mapIntelService.getBossRefreshInfo(map),
+                mapIntelService.getExtractionInfo(map),
+                mapLootService.getLootInfo(map).orElse(null)
         );
     }
 
@@ -175,21 +200,17 @@ public class WhiteboardInstanceService {
         if (!repository.existsByInstanceId(instanceId)) {
             throw new ResponseStatusException(NOT_FOUND, "Whiteboard instance not found");
         }
-        chatMessageRepository.deleteByInstanceId(instanceId);
         repository.deleteById(instanceId);
     }
 
     @Transactional
     public void clearAllInstances() {
-        chatMessageRepository.deleteAllInBatch();
         repository.deleteAllInBatch();
     }
 
     @Transactional
     public int cleanupExpiredInstances() {
-        int deleted = repository.deleteExpired(Instant.now());
-        chatMessageRepository.deleteOrphanMessages();
-        return deleted;
+        return repository.deleteExpired(Instant.now());
     }
 
     private void saveStateInternal(WhiteboardInstanceEntity entity, JsonNode state) {
@@ -236,7 +257,6 @@ public class WhiteboardInstanceService {
         return new WhiteboardInstanceResponse(
                 entity.getInstanceId(),
                 entity.getMapId(),
-                WS_PATH_PREFIX + entity.getInstanceId(),
                 entity.getCreatedAt(),
                 entity.getExpireAt()
         );
@@ -324,7 +344,6 @@ public class WhiteboardInstanceService {
         List<String> oldestIds = oldestInstances.stream()
                 .map(WhiteboardInstanceEntity::getInstanceId)
                 .toList();
-        chatMessageRepository.deleteByInstanceIdIn(oldestIds);
         repository.deleteAllByIdInBatch(oldestIds);
     }
 }

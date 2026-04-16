@@ -23,53 +23,46 @@ Language: [中文](#中文) | [English](#english)
 
 1. 环境准备
    - 安装 JDK 17+、Maven 3.9+
-   - 准备 MySQL（可选使用项目脚本启动 Docker 依赖）
-2. 启动依赖服务（开发环境）
-   ```bash
-   ./scripts/start-docker.sh
-   ```
-   停止依赖服务：
-   ```bash
-   docker compose -f docker/docker-compose.dev.yml down
-   ```
-3. 检查配置
+   - 在本机准备 MySQL 8+，默认连接 `127.0.0.1:3306/tarkov_board`
+2. 检查配置
    - 本地开发运行 `mvn spring-boot:run` 时，会读取项目根目录 `.env`，因为已配置 `spring.config.import: optional:file:.env[.properties]`
+   - 根目录 `.env` 现在默认是本地开发配置；Docker 部署请使用 `.env.prod`
    - 文件：`src/main/resources/application.yml`
    - 重点项：`spring.datasource.*`、`app.auth.*`、`app.jwt.*`
-4. 启动后端
+3. 启动后端
    ```bash
    mvn spring-boot:run
    ```
-5. 验证
+4. 验证
    ```bash
-   curl http://localhost:8080/api/health
+   curl http://127.0.0.1:8081/eftboard/api/health
    ```
 
 ### 本地 MySQL 预置数据与联调
 
 如果你希望前端本地开发时直接连本地 MySQL 调试，推荐按下面的顺序：
 
-1. 启动本地 MySQL（Docker）
+1. 启动你本机的 MySQL
    ```bash
-   ./scripts/start-docker.sh
+   mysql -h127.0.0.1 -P3306 -uroot -p
    ```
    说明：
-   - 会启动 `docker/docker-compose.dev.yml` 里的 MySQL 8.4
-   - 会自动创建数据库 `tarkov_board`
-   - 默认对宿主机暴露 `127.0.0.1:3306`
+   - 请先确认本机已有数据库 `tarkov_board`
+   - 如果还没有，可先执行：
+   ```sql
+   CREATE DATABASE IF NOT EXISTS tarkov_board
+     DEFAULT CHARACTER SET utf8mb4
+     COLLATE utf8mb4_unicode_ci;
+   ```
 2. 启动后端并自动预置数据
    ```bash
    mvn spring-boot:run
-   ```
-   或者直接一键启动：
-   ```bash
-   ./scripts/dev-local.sh
    ```
    说明：
    - 后端启动时会自动创建表
    - `tarkov_map` 会从 `src/main/resources/seeds/tarkov-maps.json` 自动灌入默认地图数据
    - `auth_admin` 会自动创建默认管理员账号
-   - `./scripts/dev-local.sh` 会强制让 Spring Boot 连接开发 MySQL `127.0.0.1:3306`
+   - 本地开发只使用你本机的 MySQL，不依赖 Docker
 3. 验证本地数据库里已经有预置数据
    ```bash
    mysql -h127.0.0.1 -P3306 -uroot -p
@@ -81,13 +74,12 @@ Language: [中文](#中文) | [English](#english)
    SELECT username, created_at FROM auth_admin;
    ```
 
-默认情况下，项目根目录 `.env` 提供的是部署/代理场景的端口：
+默认情况下，项目根目录 `.env` 提供的是本地开发端口：
 
-- MySQL：`127.0.0.1:10003`
-- 后端：`http://127.0.0.1:10002/eftboard-server`
+- MySQL：`127.0.0.1:3306`
+- 后端：`http://127.0.0.1:8081/eftboard`
 
-如果你使用 `docker-compose.nginx.yml` 或 `docker-compose.prod.yml`，可以沿用这组端口。
-如果你使用开发脚本 `./scripts/start-docker.sh`，则 MySQL 走 `127.0.0.1:3306`；此时推荐直接使用 `./scripts/dev-local.sh` 启动后端，它会自动覆盖成正确的开发端口。
+如果你使用 `docker-compose.nginx.yml` 或 `docker-compose.prod.yml`，请改用 `.env.prod`，不要复用本地开发 `.env`。
 
 ### 打包与部署
 
@@ -96,14 +88,14 @@ Language: [中文](#中文) | [English](#english)
 
 1. 配置部署环境变量（示例）
    ```bash
-   cp .env.example .env
-   # 编辑 .env，至少设置 MYSQL_ROOT_PASSWORD / APP_JWT_SECRET / APP_ADMIN_PASSWORD_HASH
+   cp .env.prod.example .env.prod
+   # 编辑 .env.prod，至少设置 MYSQL_ROOT_PASSWORD / APP_JWT_SECRET / APP_ADMIN_PASSWORD_HASH
    # 可选：APP_IMAGE_REPOSITORY / APP_IMAGE_TAG
    ```
 2. 拉取并启动后端镜像
    ```bash
-   docker compose pull app
-   docker compose up -d app
+   docker compose -f docker-compose.prod.yml --env-file .env.prod pull app
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app
    ```
 3. 部署后验证
    ```bash
@@ -119,9 +111,9 @@ Language: [中文](#中文) | [English](#english)
 
 1. 准备环境变量
    ```bash
-   cp .env.example .env
+   cp .env.prod.example .env.prod
    ```
-2. 编辑 `.env`，至少设置：
+2. 编辑 `.env.prod`，至少设置：
    - `MYSQL_HOST`
    - `MYSQL_BIND_ADDRESS`
    - `MYSQL_PORT`
@@ -141,16 +133,16 @@ Language: [中文](#中文) | [English](#english)
    如果镜像是公开仓库，可以跳过这一步。
 4. 启动服务
    ```bash
-   docker compose -f docker-compose.prod.yml --env-file .env up -d
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
    ```
 5. 更新服务
    ```bash
-   docker compose -f docker-compose.prod.yml --env-file .env pull
-   docker compose -f docker-compose.prod.yml --env-file .env up -d
+   docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
    ```
 6. 查看日志
    ```bash
-   docker compose -f docker-compose.prod.yml --env-file .env logs -f app
+   docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f app
    ```
 
 说明：
@@ -176,9 +168,9 @@ Language: [中文](#中文) | [English](#english)
 
 1. 准备环境变量
    ```bash
-   cp .env.example .env
+   cp .env.prod.example .env.prod
    ```
-2. 编辑 `.env`，至少设置：
+2. 编辑 `.env.prod`，至少设置：
    - `MYSQL_HOST`
    - `MYSQL_ROOT_PASSWORD`
    - `MYSQL_DATABASE`
@@ -191,7 +183,7 @@ Language: [中文](#中文) | [English](#english)
    - `APP_PORT`
 3. 启动后端和数据库
    ```bash
-   docker compose -f docker-compose.nginx.yml --env-file .env up -d
+   docker compose -f docker-compose.nginx.yml --env-file .env.prod up -d
    ```
 4. 验证后端
    ```bash
@@ -199,8 +191,8 @@ Language: [中文](#中文) | [English](#english)
    ```
 5. 更新服务
    ```bash
-   docker compose -f docker-compose.nginx.yml --env-file .env pull
-   docker compose -f docker-compose.nginx.yml --env-file .env up -d
+   docker compose -f docker-compose.nginx.yml --env-file .env.prod pull
+   docker compose -f docker-compose.nginx.yml --env-file .env.prod up -d
    ```
 
 Nginx 示例：
@@ -219,7 +211,7 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    location /ws/ {
+    location /api/ws/ {
         proxy_pass http://127.0.0.1:18080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -260,25 +252,18 @@ Jar 方式（手工部署）仍可使用：
 
 1. Prerequisites
    - Install JDK 17+ and Maven 3.9+
-   - Prepare MySQL (or use the project script to start Docker dependencies)
-2. Start dependencies (dev)
-   ```bash
-   ./scripts/start-docker.sh
-   ```
-   Stop dependencies:
-   ```bash
-   docker compose -f docker/docker-compose.dev.yml down
-   ```
-3. Check configuration
+   - Prepare a local MySQL 8+ instance on `127.0.0.1:3306`
+2. Check configuration
    - File: `src/main/resources/application.yml`
+   - Local runs load the root `.env`; Docker deploys should use `.env.prod`
    - Key fields: `spring.datasource.*`, `app.auth.*`, `app.jwt.*`
-4. Start backend
+3. Start backend
    ```bash
    mvn spring-boot:run
    ```
-5. Verify
+4. Verify
    ```bash
-   curl http://localhost:8080/api/health
+   curl http://127.0.0.1:8081/eftboard/api/health
    ```
 
 ### Build and Deploy
@@ -288,14 +273,14 @@ Recommended flow: after pushing `master` or a `v*` tag, GitHub Actions builds an
 
 1. Prepare deploy env vars (example)
    ```bash
-   cp .env.example .env
-   # edit .env, at least set MYSQL_*/APP_JWT_SECRET/APP_ADMIN_PASSWORD_HASH
+   cp .env.prod.example .env.prod
+   # edit .env.prod, at least set MYSQL_*/APP_JWT_SECRET/APP_ADMIN_PASSWORD_HASH
    # optional: APP_IMAGE_REPOSITORY / APP_IMAGE_TAG
    ```
 2. Pull and start backend image
    ```bash
-   docker compose pull app
-   docker compose up -d app
+   docker compose -f docker-compose.prod.yml --env-file .env.prod pull app
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app
    ```
 3. Post-deploy check
    ```bash

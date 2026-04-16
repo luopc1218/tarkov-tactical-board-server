@@ -1,5 +1,6 @@
 package com.tarkov.board.whiteboard;
 
+import com.tarkov.board.mapintel.WhiteboardMapIntelResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -23,7 +24,7 @@ public class WhiteboardController {
     }
 
     @PostMapping("/instances")
-    @Operation(summary = "创建白板实例", description = "返回实例ID和WebSocket路径")
+    @Operation(summary = "创建白板实例", description = "返回实例ID、地图ID和过期时间")
     public WhiteboardInstanceResponse createInstance(@Valid @RequestBody WhiteboardCreateInstanceRequest request) {
         return instanceService.createInstance(request.mapId());
     }
@@ -52,5 +53,11 @@ public class WhiteboardController {
     public WhiteboardInstanceResponse switchMap(@PathVariable String instanceId,
                                                 @Valid @RequestBody WhiteboardSwitchMapRequest request) {
         return instanceService.switchMap(instanceId, request.mapId(), request.shouldResetState());
+    }
+
+    @GetMapping("/instances/{instanceId}/map-intel")
+    @Operation(summary = "获取地图情报", description = "返回当前实例地图的情报信息，包括BOSS刷新、撤离点和高级物资点")
+    public WhiteboardMapIntelResponse getMapIntel(@PathVariable String instanceId) {
+        return instanceService.getMapIntel(instanceId);
     }
 }

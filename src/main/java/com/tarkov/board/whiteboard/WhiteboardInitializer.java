@@ -56,32 +56,5 @@ public class WhiteboardInitializer {
                     ON whiteboard_instance (expire_at)
                     """);
         }
-
-        jdbcTemplate.execute("""
-                CREATE TABLE IF NOT EXISTS whiteboard_chat_message (
-                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                    instance_id VARCHAR(64) NOT NULL,
-                    sender_name VARCHAR(64) NOT NULL,
-                    content TEXT NOT NULL,
-                    created_at DATETIME(3) NOT NULL
-                )
-                """);
-
-        Integer chatIndexCount = jdbcTemplate.queryForObject(
-                """
-                        SELECT COUNT(1)
-                        FROM information_schema.statistics
-                        WHERE table_schema = DATABASE()
-                          AND table_name = 'whiteboard_chat_message'
-                          AND index_name = 'idx_whiteboard_chat_instance_created_at'
-                        """,
-                Integer.class
-        );
-        if (chatIndexCount != null && chatIndexCount == 0) {
-            jdbcTemplate.execute("""
-                    CREATE INDEX idx_whiteboard_chat_instance_created_at
-                    ON whiteboard_chat_message (instance_id, created_at)
-                    """);
-        }
     }
 }

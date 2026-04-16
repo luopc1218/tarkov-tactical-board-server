@@ -1,5 +1,6 @@
 package com.tarkov.board.map;
 
+import com.tarkov.board.mapintel.TarkovMapLootService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -17,9 +18,11 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class TarkovMapService {
 
     private final TarkovMapRepository repository;
+    private final TarkovMapLootService mapLootService;
 
-    public TarkovMapService(TarkovMapRepository repository) {
+    public TarkovMapService(TarkovMapRepository repository, TarkovMapLootService mapLootService) {
         this.repository = repository;
+        this.mapLootService = mapLootService;
     }
 
     public List<TarkovMapResponse> listMaps() {
@@ -34,8 +37,8 @@ public class TarkovMapService {
         TarkovMapEntity entity = new TarkovMapEntity(
                 request.nameZh(),
                 request.nameEn(),
-                request.bannerFileName(),
-                request.mapFileName(),
+                extractFileName(request.bannerFileName()),
+                extractFileName(request.mapFileName()),
                 repository.findMaxSortOrder() + 1
         );
         return toResponse(repository.save(entity));
@@ -45,21 +48,36 @@ public class TarkovMapService {
     public TarkovMapResponse update(Long id, TarkovMapUpsertRequest request) {
         TarkovMapEntity entity = repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Map not found"));
+        String oldMapNameZh = entity.getNameZh();
 
         entity.setNameZh(request.nameZh());
         entity.setNameEn(request.nameEn());
-        entity.setBannerFileName(request.bannerFileName());
-        entity.setMapFileName(request.mapFileName());
+        entity.setBannerFileName(extractFileName(request.bannerFileName()));
+        entity.setMapFileName(extractFileName(request.mapFileName()));
 
-        return toResponse(repository.save(entity));
+        TarkovMapResponse response = toResponse(repository.save(entity));
+        mapLootService.renameMapLootIfNeeded(oldMapNameZh, request.nameZh());
+        return response;
+    }
+
+    private String extractFileName(String filePath) {
+        if (filePath == null || filePath.isBlank()) {
+            return filePath;
+        }
+        // 提取文件名，去除路径部分
+        int lastSeparatorIndex = Math.max(
+                filePath.lastIndexOf('/'),
+                filePath.lastIndexOf('\\')
+        );
+        return lastSeparatorIndex >= 0 ? filePath.substring(lastSeparatorIndex + 1) : filePath;
     }
 
     @Transactional
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new ResponseStatusException(NOT_FOUND, "Map not found");
-        }
-        repository.deleteById(id);
+        TarkovMapEntity entity = repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Map not found"));
+        repository.delete(entity);
+        mapLootService.deleteMapLoot(entity.getNameZh());
         normalizeSortOrder();
     }
 

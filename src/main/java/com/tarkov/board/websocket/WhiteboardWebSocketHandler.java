@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class WhiteboardWebSocketHandler extends TextWebSocketHandler {
 
-    private static final String WHITEBOARD_PATH_PREFIX = "/ws/whiteboard/";
+    private static final String WHITEBOARD_PATH_PREFIX = "/api/ws/whiteboard/";
     private static final String INSTANCE_ID_ATTR = "whiteboardInstanceId";
 
     private final WhiteboardInstanceService instanceService;

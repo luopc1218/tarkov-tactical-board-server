@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${PROJECT_ROOT}/docker-compose.prod.yml"
-ENV_FILE="${PROJECT_ROOT}/.env"
+ENV_FILE="${PROJECT_ROOT}/.env.prod"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Error: docker not found."
