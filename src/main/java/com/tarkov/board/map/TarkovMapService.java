@@ -1,6 +1,4 @@
 package com.tarkov.board.map;
-
-import com.tarkov.board.mapintel.TarkovMapLootService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,11 +16,9 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class TarkovMapService {
 
     private final TarkovMapRepository repository;
-    private final TarkovMapLootService mapLootService;
 
-    public TarkovMapService(TarkovMapRepository repository, TarkovMapLootService mapLootService) {
+    public TarkovMapService(TarkovMapRepository repository) {
         this.repository = repository;
-        this.mapLootService = mapLootService;
     }
 
     public List<TarkovMapResponse> listMaps() {
@@ -48,16 +44,13 @@ public class TarkovMapService {
     public TarkovMapResponse update(Long id, TarkovMapUpsertRequest request) {
         TarkovMapEntity entity = repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Map not found"));
-        String oldMapNameZh = entity.getNameZh();
 
         entity.setNameZh(request.nameZh());
         entity.setNameEn(request.nameEn());
         entity.setBannerFileName(extractFileName(request.bannerFileName()));
         entity.setMapFileName(extractFileName(request.mapFileName()));
 
-        TarkovMapResponse response = toResponse(repository.save(entity));
-        mapLootService.renameMapLootIfNeeded(oldMapNameZh, request.nameZh());
-        return response;
+        return toResponse(repository.save(entity));
     }
 
     private String extractFileName(String filePath) {
@@ -77,7 +70,6 @@ public class TarkovMapService {
         TarkovMapEntity entity = repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Map not found"));
         repository.delete(entity);
-        mapLootService.deleteMapLoot(entity.getNameZh());
         normalizeSortOrder();
     }
 

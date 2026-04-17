@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tarkov.board.map.TarkovMapEntity;
 import com.tarkov.board.map.TarkovMapRepository;
 import com.tarkov.board.mapintel.EftarkovMapIntelService;
-import com.tarkov.board.mapintel.TarkovMapLootService;
 import com.tarkov.board.mapintel.WhiteboardMapIntelResponse;
 import com.tarkov.board.websocket.WhiteboardRoomSessionManager;
 import org.springframework.data.domain.PageRequest;
@@ -39,21 +38,18 @@ public class WhiteboardInstanceService {
     private final WhiteboardRoomSessionManager roomSessionManager;
     private final ObjectMapper objectMapper;
     private final EftarkovMapIntelService mapIntelService;
-    private final TarkovMapLootService mapLootService;
     private final ReentrantLock createInstanceLock = new ReentrantLock();
 
     public WhiteboardInstanceService(WhiteboardInstanceRepository repository,
                                      TarkovMapRepository mapRepository,
                                      WhiteboardRoomSessionManager roomSessionManager,
                                      ObjectMapper objectMapper,
-                                     EftarkovMapIntelService mapIntelService,
-                                     TarkovMapLootService mapLootService) {
+                                     EftarkovMapIntelService mapIntelService) {
         this.repository = repository;
         this.mapRepository = mapRepository;
         this.roomSessionManager = roomSessionManager;
         this.objectMapper = objectMapper;
         this.mapIntelService = mapIntelService;
-        this.mapLootService = mapLootService;
     }
 
     @Transactional
@@ -125,8 +121,7 @@ public class WhiteboardInstanceService {
                 map.getNameZh(),
                 map.getNameEn(),
                 mapIntelService.getBossRefreshInfo(map),
-                mapIntelService.getExtractionInfo(map),
-                mapLootService.getLootInfo(map).orElse(null)
+                mapIntelService.getExtractionInfo(map)
         );
     }
 

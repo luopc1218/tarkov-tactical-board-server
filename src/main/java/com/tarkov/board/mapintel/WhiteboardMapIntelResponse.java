@@ -8,8 +8,7 @@ public record WhiteboardMapIntelResponse(
         String mapNameZh,
         String mapNameEn,
         BossRefreshInfo bossRefresh,
-        ExtractionInfo extractions,
-        HighValueLootInfo highValueLoot
+        ExtractionInfo extractions
 ) {
 
     public record BossRefreshInfo(
@@ -55,18 +54,4 @@ public record WhiteboardMapIntelResponse(
     ) {
     }
 
-    public record HighValueLootInfo(
-            String version,
-            List<HighValueLootPoint> points
-    ) {
-    }
-
-    public record HighValueLootPoint(
-            String area,
-            String location,
-            List<String> items,
-            List<String> keys,
-            String priority
-    ) {
-    }
 }
