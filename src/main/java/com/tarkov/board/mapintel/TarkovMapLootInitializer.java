@@ -55,16 +55,35 @@ public class TarkovMapLootInitializer {
         LootSeedRoot root = loadSeedData();
         Instant now = Instant.now();
         for (LootSeedMapItem item : root.maps()) {
-            if (repository.findByMapNameZh(item.mapName()).isPresent()) {
-                continue;
+            String seedLootJson = writeLootJson(item.points());
+            TarkovMapLootEntity entity = repository.findByMapNameZh(item.mapName())
+                    .orElseGet(() -> new TarkovMapLootEntity(item.mapName(), root.version(), seedLootJson, now));
+
+            if (entity.getId() == null || shouldRefreshFromSeed(entity, root.version())) {
+                entity.setVersion(root.version());
+                entity.setLootJson(seedLootJson);
+                entity.setUpdatedAt(now);
+                repository.save(entity);
             }
-            repository.save(new TarkovMapLootEntity(
-                    item.mapName(),
-                    root.version(),
-                    writeLootJson(item.points()),
-                    now
-            ));
         }
+    }
+
+    private boolean shouldRefreshFromSeed(TarkovMapLootEntity entity, String seedVersion) {
+        if (isBlankLootJson(entity.getLootJson())) {
+            return true;
+        }
+        String version = entity.getVersion();
+        if (version == null || version.isBlank()) {
+            return true;
+        }
+        if (version.startsWith("admin-")) {
+            return false;
+        }
+        return !seedVersion.equals(version);
+    }
+
+    private boolean isBlankLootJson(String lootJson) {
+        return lootJson == null || lootJson.isBlank() || "[]".equals(lootJson.trim());
     }
 
     private LootSeedRoot loadSeedData() {
