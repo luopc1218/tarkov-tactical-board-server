@@ -36,8 +36,9 @@ public class WhiteboardAdminController {
             @RequestParam(required = false) Integer size,
             @RequestParam(name = "current", required = false) Integer current,
             @RequestParam(name = "pageSize", required = false) Integer pageSize) {
-        Integer resolvedPage = page != null ? page : (current != null ? current - 1 : null);
-        Integer resolvedSize = size != null ? size : pageSize;
+        // Prefer 1-based current/pageSize when both naming styles are present from the frontend.
+        Integer resolvedPage = current != null ? current - 1 : page;
+        Integer resolvedSize = pageSize != null ? pageSize : size;
         return instanceService.listInstances(includeExpired, resolvedPage, resolvedSize);
     }
 
