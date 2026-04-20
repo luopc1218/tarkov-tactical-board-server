@@ -24,7 +24,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import jakarta.annotation.PreDestroy;
 
 @Service
 public class EftarkovMapIntelService {
@@ -33,6 +39,7 @@ public class EftarkovMapIntelService {
     private static final String BOSS_PAGE_URL = EFTARKOV_BASE_URL + "/news/web_208.html";
     private static final String MAP_INDEX_URL = EFTARKOV_BASE_URL + "/news/web_176.html";
     private static final Duration CACHE_TTL = Duration.ofMinutes(30);
+    private static final int INTEL_FETCH_THREADS = 6;
     private static final Map<String, String> MAP_API_NAME_BY_ZH = Map.ofEntries(
             Map.entry("中心区", "Ground Zero"),
             Map.entry("工厂", "Factory"),
@@ -74,8 +81,10 @@ public class EftarkovMapIntelService {
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
+    private final ExecutorService intelExecutor;
     private final Map<String, CacheEntry<WhiteboardMapIntelResponse.BossRefreshInfo>> bossCache = new ConcurrentHashMap<>();
     private final Map<String, CacheEntry<WhiteboardMapIntelResponse.ExtractionInfo>> extractionCache = new ConcurrentHashMap<>();
+    private final Map<String, CacheEntry<WhiteboardMapIntelResponse.ExtractionPointDetail>> extractionDetailCache = new ConcurrentHashMap<>();
 
     public EftarkovMapIntelService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -83,6 +92,20 @@ public class EftarkovMapIntelService {
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
+        this.intelExecutor = Executors.newFixedThreadPool(INTEL_FETCH_THREADS);
+    }
+
+    @PreDestroy
+    public void destroy() {
+        intelExecutor.shutdown();
+        try {
+            if (!intelExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                intelExecutor.shutdownNow();
+            }
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+            intelExecutor.shutdownNow();
+        }
     }
 
     public WhiteboardMapIntelResponse.BossRefreshInfo getBossRefreshInfo(TarkovMapEntity map) {
@@ -102,12 +125,25 @@ public class EftarkovMapIntelService {
                         "当前地图暂无 Boss 刷新率映射");
             }
 
-            List<WhiteboardMapIntelResponse.BossSpawnRate> regular = fetchBossRatesByMode(2, apiMapName);
-            List<WhiteboardMapIntelResponse.BossSpawnRate> pve = fetchBossRatesByMode(1, apiMapName);
+            CompletableFuture<List<WhiteboardMapIntelResponse.BossSpawnRate>> regularFuture =
+                    CompletableFuture.supplyAsync(() -> fetchBossRatesUnchecked(2, apiMapName), intelExecutor);
+            CompletableFuture<List<WhiteboardMapIntelResponse.BossSpawnRate>> pveFuture =
+                    CompletableFuture.supplyAsync(() -> fetchBossRatesUnchecked(1, apiMapName), intelExecutor);
+
+            List<WhiteboardMapIntelResponse.BossSpawnRate> regular = regularFuture.join();
+            List<WhiteboardMapIntelResponse.BossSpawnRate> pve = pveFuture.join();
             return new WhiteboardMapIntelResponse.BossRefreshInfo(BOSS_PAGE_URL, fetchedAt, regular, pve, null);
         } catch (Exception e) {
             return new WhiteboardMapIntelResponse.BossRefreshInfo(BOSS_PAGE_URL, fetchedAt, List.of(), List.of(),
                     "抓取 Boss 刷新率失败: " + e.getMessage());
+        }
+    }
+
+    private List<WhiteboardMapIntelResponse.BossSpawnRate> fetchBossRatesUnchecked(int modeId, String apiMapName) {
+        try {
+            return fetchBossRatesByMode(modeId, apiMapName);
+        } catch (IOException | InterruptedException e) {
+            throw new IllegalStateException(e);
         }
     }
 
@@ -154,7 +190,7 @@ public class EftarkovMapIntelService {
                         "地图详情页中未找到撤离点表格");
             }
 
-            List<WhiteboardMapIntelResponse.ExtractionPoint> points = new ArrayList<>();
+            List<CompletableFuture<WhiteboardMapIntelResponse.ExtractionPoint>> pointFutures = new ArrayList<>();
             Elements rows = extractionTable.select("tr");
             for (int i = 1; i < rows.size(); i++) {
                 Elements cells = rows.get(i).select("td");
@@ -165,23 +201,39 @@ public class EftarkovMapIntelService {
                 Element nameCell = cells.get(0);
                 Element link = nameCell.selectFirst("a[href]");
                 String detailUrl = link == null ? null : toAbsoluteUrl(link.attr("href"));
-                WhiteboardMapIntelResponse.ExtractionPointDetail detail = detailUrl == null
-                        ? null
-                        : fetchExtractionPointDetail(detailUrl);
-                points.add(new WhiteboardMapIntelResponse.ExtractionPoint(
-                        normalizeWhitespace(nameCell.text()),
-                        normalizeWhitespace(cells.get(1).text()),
-                        normalizeWhitespace(cells.get(2).text()),
-                        detailUrl,
-                        detail
+                String name = normalizeWhitespace(nameCell.text());
+                String faction = normalizeWhitespace(cells.get(1).text());
+                String requirement = normalizeWhitespace(cells.get(2).text());
+                pointFutures.add(CompletableFuture.supplyAsync(
+                        () -> buildExtractionPoint(name, faction, requirement, detailUrl),
+                        intelExecutor
                 ));
             }
 
+            List<WhiteboardMapIntelResponse.ExtractionPoint> points = pointFutures.stream()
+                    .map(CompletableFuture::join)
+                    .toList();
             return new WhiteboardMapIntelResponse.ExtractionInfo(mapDetailUrl, fetchedAt, points, null);
         } catch (Exception e) {
             return new WhiteboardMapIntelResponse.ExtractionInfo(MAP_INDEX_URL, fetchedAt, List.of(),
                     "抓取撤离点失败: " + e.getMessage());
         }
+    }
+
+    private WhiteboardMapIntelResponse.ExtractionPoint buildExtractionPoint(String name,
+                                                                            String faction,
+                                                                            String requirement,
+                                                                            String detailUrl) {
+        WhiteboardMapIntelResponse.ExtractionPointDetail detail = detailUrl == null
+                ? null
+                : getCachedValue(extractionDetailCache, detailUrl, () -> fetchExtractionPointDetail(detailUrl));
+        return new WhiteboardMapIntelResponse.ExtractionPoint(
+                name,
+                faction,
+                requirement,
+                detailUrl,
+                detail
+        );
     }
 
     private WhiteboardMapIntelResponse.ExtractionPointDetail fetchExtractionPointDetail(String detailUrl) throws IOException, InterruptedException {

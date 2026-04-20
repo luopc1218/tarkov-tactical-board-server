@@ -232,7 +232,7 @@ Jar 方式（手工部署）仍可使用：
    ```
 2. 运行 Jar
    ```bash
-   java -jar target/tarkov-tactical-board-server-0.0.1-SNAPSHOT.jar
+   java -jar target/tarkov-tactical-board-server-2.0.1.jar
    ```
 
 ## English
@@ -295,5 +295,5 @@ Jar flow (manual deployment) is still available:
    ```
 2. Run Jar
    ```bash
-   java -jar target/tarkov-tactical-board-server-0.0.1-SNAPSHOT.jar
+   java -jar target/tarkov-tactical-board-server-2.0.1.jar
    ```

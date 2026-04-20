@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tarkov.board.map.TarkovMapEntity;
 import com.tarkov.board.map.TarkovMapRepository;
-import com.tarkov.board.mapintel.EftarkovMapIntelService;
+import com.tarkov.board.mapintel.MapIntelSnapshotService;
 import com.tarkov.board.mapintel.WhiteboardMapIntelResponse;
 import com.tarkov.board.websocket.WhiteboardRoomSessionManager;
 import org.springframework.data.domain.PageRequest;
@@ -37,19 +37,19 @@ public class WhiteboardInstanceService {
     private final TarkovMapRepository mapRepository;
     private final WhiteboardRoomSessionManager roomSessionManager;
     private final ObjectMapper objectMapper;
-    private final EftarkovMapIntelService mapIntelService;
+    private final MapIntelSnapshotService mapIntelSnapshotService;
     private final ReentrantLock createInstanceLock = new ReentrantLock();
 
     public WhiteboardInstanceService(WhiteboardInstanceRepository repository,
                                      TarkovMapRepository mapRepository,
                                      WhiteboardRoomSessionManager roomSessionManager,
                                      ObjectMapper objectMapper,
-                                     EftarkovMapIntelService mapIntelService) {
+                                     MapIntelSnapshotService mapIntelSnapshotService) {
         this.repository = repository;
         this.mapRepository = mapRepository;
         this.roomSessionManager = roomSessionManager;
         this.objectMapper = objectMapper;
-        this.mapIntelService = mapIntelService;
+        this.mapIntelSnapshotService = mapIntelSnapshotService;
     }
 
     @Transactional
@@ -116,13 +116,7 @@ public class WhiteboardInstanceService {
         TarkovMapEntity map = mapRepository.findById(entity.getMapId())
                 .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Map not found"));
 
-        return new WhiteboardMapIntelResponse(
-                map.getId(),
-                map.getNameZh(),
-                map.getNameEn(),
-                mapIntelService.getBossRefreshInfo(map),
-                mapIntelService.getExtractionInfo(map)
-        );
+        return mapIntelSnapshotService.getMapIntel(map);
     }
 
     @Transactional

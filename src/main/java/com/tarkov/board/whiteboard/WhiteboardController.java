@@ -56,7 +56,7 @@ public class WhiteboardController {
     }
 
     @GetMapping("/instances/{instanceId}/map-intel")
-    @Operation(summary = "获取地图情报", description = "返回当前实例地图的情报信息，包括BOSS刷新和撤离点")
+    @Operation(summary = "获取地图情报", description = "返回当前实例地图的本地情报快照，包括BOSS刷新和撤离点；未同步时返回提示信息")
     public WhiteboardMapIntelResponse getMapIntel(@PathVariable String instanceId) {
         return instanceService.getMapIntel(instanceId);
     }
