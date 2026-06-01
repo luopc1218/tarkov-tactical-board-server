@@ -42,14 +42,15 @@ public class TarkovMapInitializer {
                     id BIGINT PRIMARY KEY AUTO_INCREMENT,
                     name_zh VARCHAR(128) NOT NULL,
                     name_en VARCHAR(128) NOT NULL,
-                    banner_file_name VARCHAR(255) NULL,
-                    map_file_name VARCHAR(255) NULL,
+                    banner_file_name VARCHAR(2048) NULL,
+                    map_file_name VARCHAR(2048) NULL,
                     sort_order INT NOT NULL DEFAULT 0
                 )
                 """);
 
         renameOldColumnsIfPresent();
         ensureNewColumnsPresent();
+        expandImageSourceColumns();
         migrateAndDropCodeColumnIfPresent();
     }
 
@@ -94,7 +95,7 @@ public class TarkovMapInitializer {
                         """);
                 jdbcTemplate.execute("ALTER TABLE tarkov_map DROP COLUMN banner_object_name");
             } else {
-                jdbcTemplate.execute("ALTER TABLE tarkov_map CHANGE COLUMN banner_object_name banner_file_name VARCHAR(255) NULL");
+                jdbcTemplate.execute("ALTER TABLE tarkov_map CHANGE COLUMN banner_object_name banner_file_name VARCHAR(2048) NULL");
             }
         }
 
@@ -107,7 +108,7 @@ public class TarkovMapInitializer {
                         """);
                 jdbcTemplate.execute("ALTER TABLE tarkov_map DROP COLUMN banner_path");
             } else {
-                jdbcTemplate.execute("ALTER TABLE tarkov_map CHANGE COLUMN banner_path banner_file_name VARCHAR(255) NULL");
+                jdbcTemplate.execute("ALTER TABLE tarkov_map CHANGE COLUMN banner_path banner_file_name VARCHAR(2048) NULL");
             }
         }
 
@@ -151,7 +152,7 @@ public class TarkovMapInitializer {
                         """);
                 jdbcTemplate.execute("ALTER TABLE tarkov_map DROP COLUMN map_object_name");
             } else {
-                jdbcTemplate.execute("ALTER TABLE tarkov_map CHANGE COLUMN map_object_name map_file_name VARCHAR(255) NULL");
+                jdbcTemplate.execute("ALTER TABLE tarkov_map CHANGE COLUMN map_object_name map_file_name VARCHAR(2048) NULL");
             }
         }
 
@@ -164,7 +165,7 @@ public class TarkovMapInitializer {
                         """);
                 jdbcTemplate.execute("ALTER TABLE tarkov_map DROP COLUMN map_path");
             } else {
-                jdbcTemplate.execute("ALTER TABLE tarkov_map CHANGE COLUMN map_path map_file_name VARCHAR(255) NULL");
+                jdbcTemplate.execute("ALTER TABLE tarkov_map CHANGE COLUMN map_path map_file_name VARCHAR(2048) NULL");
             }
         }
     }
@@ -181,7 +182,7 @@ public class TarkovMapInitializer {
                 Integer.class
         );
         if (bannerColumnCount != null && bannerColumnCount == 0) {
-            jdbcTemplate.execute("ALTER TABLE tarkov_map ADD COLUMN banner_file_name VARCHAR(255) NULL");
+            jdbcTemplate.execute("ALTER TABLE tarkov_map ADD COLUMN banner_file_name VARCHAR(2048) NULL");
         }
 
         Integer mapColumnCount = jdbcTemplate.queryForObject(
@@ -195,7 +196,7 @@ public class TarkovMapInitializer {
                 Integer.class
         );
         if (mapColumnCount != null && mapColumnCount == 0) {
-            jdbcTemplate.execute("ALTER TABLE tarkov_map ADD COLUMN map_file_name VARCHAR(255) NULL");
+            jdbcTemplate.execute("ALTER TABLE tarkov_map ADD COLUMN map_file_name VARCHAR(2048) NULL");
         }
 
         Integer sortColumnCount = jdbcTemplate.queryForObject(
@@ -213,6 +214,11 @@ public class TarkovMapInitializer {
         }
     }
 
+    private void expandImageSourceColumns() {
+        jdbcTemplate.execute("ALTER TABLE tarkov_map MODIFY COLUMN banner_file_name VARCHAR(2048) NULL");
+        jdbcTemplate.execute("ALTER TABLE tarkov_map MODIFY COLUMN map_file_name VARCHAR(2048) NULL");
+    }
+
     private void migrateAndDropCodeColumnIfPresent() {
         Integer codeColumnCount = jdbcTemplate.queryForObject(
                 """
@@ -227,19 +233,6 @@ public class TarkovMapInitializer {
         if (codeColumnCount == null || codeColumnCount == 0) {
             return;
         }
-
-        jdbcTemplate.update("""
-                UPDATE tarkov_map
-                SET banner_file_name = CONCAT('Banner_', code, '.png')
-                WHERE (banner_file_name IS NULL OR banner_file_name = '')
-                  AND code IS NOT NULL AND code <> ''
-                """);
-        jdbcTemplate.update("""
-                UPDATE tarkov_map
-                SET map_file_name = CONCAT(code, '.png')
-                WHERE (map_file_name IS NULL OR map_file_name = '')
-                  AND code IS NOT NULL AND code <> ''
-                """);
 
         jdbcTemplate.execute("ALTER TABLE tarkov_map DROP COLUMN code");
     }

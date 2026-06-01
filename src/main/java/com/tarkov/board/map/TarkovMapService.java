@@ -33,8 +33,8 @@ public class TarkovMapService {
         TarkovMapEntity entity = new TarkovMapEntity(
                 request.nameZh(),
                 request.nameEn(),
-                extractFileName(request.bannerFileName()),
-                extractFileName(request.mapFileName()),
+                normalizeText(request.bannerFileName()),
+                normalizeText(request.mapFileName()),
                 repository.findMaxSortOrder() + 1
         );
         return toResponse(repository.save(entity));
@@ -47,22 +47,14 @@ public class TarkovMapService {
 
         entity.setNameZh(request.nameZh());
         entity.setNameEn(request.nameEn());
-        entity.setBannerFileName(extractFileName(request.bannerFileName()));
-        entity.setMapFileName(extractFileName(request.mapFileName()));
+        entity.setBannerFileName(normalizeText(request.bannerFileName()));
+        entity.setMapFileName(normalizeText(request.mapFileName()));
 
         return toResponse(repository.save(entity));
     }
 
-    private String extractFileName(String filePath) {
-        if (filePath == null || filePath.isBlank()) {
-            return filePath;
-        }
-        // 提取文件名，去除路径部分
-        int lastSeparatorIndex = Math.max(
-                filePath.lastIndexOf('/'),
-                filePath.lastIndexOf('\\')
-        );
-        return lastSeparatorIndex >= 0 ? filePath.substring(lastSeparatorIndex + 1) : filePath;
+    private String normalizeText(String value) {
+        return value == null ? null : value.trim();
     }
 
     @Transactional
@@ -110,9 +102,22 @@ public class TarkovMapService {
                 entity.getNameZh(),
                 entity.getNameEn(),
                 entity.getSortOrder(),
-                entity.getBannerFileName(),
-                entity.getMapFileName()
+                networkUrlOrNull(entity.getBannerFileName()),
+                networkUrlOrNull(entity.getMapFileName())
         );
+    }
+
+    private String networkUrlOrNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return isHttpUrl(trimmed) ? trimmed : null;
+    }
+
+    private boolean isHttpUrl(String value) {
+        return value.regionMatches(true, 0, "http://", 0, "http://".length())
+                || value.regionMatches(true, 0, "https://", 0, "https://".length());
     }
 
     private void normalizeSortOrder() {

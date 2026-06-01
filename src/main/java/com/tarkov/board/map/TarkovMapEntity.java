@@ -21,10 +21,10 @@ public class TarkovMapEntity {
     @Column(name = "name_en", nullable = false, length = 128)
     private String nameEn;
 
-    @Column(name = "banner_file_name", length = 255)
+    @Column(name = "banner_file_name", length = 2048)
     private String bannerFileName;
 
-    @Column(name = "map_file_name", length = 255)
+    @Column(name = "map_file_name", length = 2048)
     private String mapFileName;
 
     @Column(name = "sort_order", nullable = false)
